@@ -54,8 +54,8 @@ AGNFeedbackParameters::AGNFeedbackParameters(const Options &options)
 	options.load("agn_feedback.kappa_agn", kappa_agn);
 	options.load("agn_feedback.accretion_eff_cooling", nu_smbh);
 
-	// relevant for Lagos 22 model.
-	options.load("agn_feedback.kappa_radio", kappa_radio);
+	// relevant for Lagos 23 model.
+	options.load("agn_feedback.kappa_jet", kappa_jet);
 	options.load("agn_feedback.hot_halo_threshold", hot_halo_threshold);
 	options.load("agn_feedback.spin_model", spin_model);
 	options.load("agn_feedback.eta_superedd", eta_superedd);

@@ -60,7 +60,7 @@ public:
 	double epsilon_wind = 0;
 
 	// Parameters relevant to Lagos22 model
-	float kappa_radio = 1;
+	float kappa_jet = 1;
 	float eta_superedd = 4;
 	float hot_halo_threshold = 1;
 	float alpha_adaf = 0.1;

@@ -535,7 +535,7 @@ double GasCooling::cooling_rate(Subhalo &subhalo, Galaxy &galaxy, double z, doub
 
 			// radio mode feedback only applies in situations where there is a hot halo
 			if(halo->hydrostatic_eq){
-				double Qnet = agnfeedback->parameters.kappa_radio * agnfeedback->agn_mechanical_luminosity(central_galaxy->smbh); //in units of 1e40erg/s.
+				double Qnet = agnfeedback->parameters.kappa_jet * agnfeedback->agn_mechanical_luminosity(central_galaxy->smbh); //in units of 1e40erg/s.
 													   
 				// If this is a central subhalo, then add up any excess jet feedback from satellite galaxies and then make excess equal 0.
 				if(subhalo.subhalo_type == Subhalo::CENTRAL) {
