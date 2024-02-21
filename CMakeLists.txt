@@ -175,7 +175,7 @@ macro(find_boost)
 	# with homebrew). Let's thus not use Boost's cmake config file and stick to
 	# cmake's own version of it for the time being
 	set(Boost_NO_BOOST_CMAKE ON)
-	find_package(Boost 1.54 COMPONENTS filesystem log program_options system REQUIRED)
+	find_package(Boost 1.68 COMPONENTS filesystem log program_options system REQUIRED)
 	set(SHARK_LIBS ${SHARK_LIBS} ${Boost_LIBRARIES})
 	include_directories(${Boost_INCLUDE_DIRS})
 endmacro()
@@ -185,7 +185,7 @@ endmacro()
 #
 macro(find_openmp)
 	find_package(OpenMP)
-	if (OPENMP_FOUND)
+	if (OpenMP_FOUND)
 
 		# We require at least OpenMP 2.0, so let's double check
 		# we have that at least
@@ -196,9 +196,11 @@ macro(find_openmp)
 		#   and OpenMP_<lang>_LIBRARIES/LIBRARY/LIB_NAMES variables
 		# This is important for Intel compilers in particular, which require
 		# additional linking
-		if ((DECLARED OPENMP_VERSION) AND (NOT OPENMP_VERSION VERSION_LESS 2.0))
+		if ((DEFINED OpenMP_VERSION) AND (NOT OpenMP_VERSION VERSION_LESS 2.0))
 			set(SHARK_OPENMP ON)
-		elseif((DECLARED OPENMP_CXX_SPEC_DATE) AND (NOT OPENMP_CXX_SPEC_DATE LESS 200203))
+		elseif ((DEFINED OpenMP_CXX_VERSION) AND (NOT OpenMP_CXX_VERSION VERSION_LESS 2.0))
+			set(SHARK_OPENMP ON)
+		elseif ((DEFINED OpenMP_CXX_SPEC_DATE) AND (NOT OpenMP_CXX_SPEC_DATE LESS 200203))
 			set(SHARK_OPENMP ON)
 		else()
 			set(OPENMP_VERSION_CHECK_SOURCE "
@@ -237,9 +239,10 @@ int main(int argc, char *argv[]) {
 	endif()
 
 	if (SHARK_OPENMP)
-		add_compile_options("${OpenMP_CXX_FLAGS}")
+		string(REPLACE " " ";" OpenMP_CXX_FLAGS_as_list ${OpenMP_CXX_FLAGS})
+		add_compile_options(${OpenMP_CXX_FLAGS_as_list})
 		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_CXX_FLAGS}")
-		set(SHARK_LIBS ${SHARK_LIBS} ${OpenMP_CXX_LIBRARIES})
+		list(APPEND SHARK_LIBS ${OpenMP_CXX_LIBRARIES})
 	endif()
 endmacro()
 
