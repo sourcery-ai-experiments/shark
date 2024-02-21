@@ -75,8 +75,8 @@ AGNFeedbackParameters::AGNFeedbackParameters(const Options &options)
 	nu2_nu1 = std::pow(alpha_td, 2.0);
 
 	// control QSO feedback.
-	options.load("agn_feedback.qso_feedback", qso_feedback);
-	options.load("agn_feedback.epsilon_qso", epsilon_qso);
+	options.load("agn_feedback.wind_feedback", wind_feedback);
+	options.load("agn_feedback.epsilon_wind", epsilon_wind);
 
 }
 
@@ -401,7 +401,7 @@ void AGNFeedback::qso_outflow_rate(double mgas, const BlackHole &smbh, double zg
 	double mBH = cosmology->comoving_to_physical_mass(smbh.mass);
 
 	// QSO feedback only acts if the accretion rate is >0, BH mass is > 0 and QSO feedback is activated by the user.
-	if(macc > 0 && mBH > 0 && sfr > 0 && mgas > 0 && parameters.qso_feedback){
+	if(macc > 0 && mBH > 0 && sfr > 0 && mgas > 0 && parameters.wind_feedback){
 		double Lbol = agn_bolometric_luminosity(smbh, true);
 		double Lcrit = qso_critical_luminosity(mgas, mbulge, rbulge);
 
@@ -414,7 +414,7 @@ void AGNFeedback::qso_outflow_rate(double mgas, const BlackHole &smbh, double zg
 
 			double mout_rate= mgas/tsalp;
 
-			double mejec_rate = (parameters.epsilon_qso * std::pow(vout/vcirc, 2.0) - 1) * mout_rate;
+			double mejec_rate = (parameters.epsilon_wind * std::pow(vout/vcirc, 2.0) - 1) * mout_rate;
 
 			// Apply boundary conditions to outflow and ejection rates
 			if(mout_rate <  0 || std::isnan(mout_rate)){

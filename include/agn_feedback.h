@@ -56,8 +56,8 @@ public:
 	double kappa_agn = 0;
 	double nu_smbh = 0.1;
 
-	bool qso_feedback = false;
-	double epsilon_qso = 0;
+	bool wind_feedback = false;
+	double epsilon_wind = 0;
 
 	// Parameters relevant to Lagos22 model
 	float kappa_radio = 1;
