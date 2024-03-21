@@ -748,7 +748,7 @@ def plot_mzr(plt, outdir, obsdir, h0, mzr, mzr_cen, mzr_sat):
         if obs:
             # The observation has error bars or not
             if obs.yerrup is not None:
-                common.errorbars(ax, obs.x, obs.y, obs.yerrdn, obs.yerrup, 'grey', 's', err_absolute=obs.err_absolute)
+                common.errorbars(ax, obs.x, obs.y, abs(obs.yerrdn), abs(obs.yerrup), 'grey', 's', err_absolute=obs.err_absolute)
                 colors.append('grey')
             else:
                 ax.plot(obs.x, obs.y, 'k', label=obs.label)
@@ -1742,7 +1742,7 @@ def main(modeldir, outdir, redshift_table, subvols, obsdir):
     plot_HImf_z0(plt, outdir, obsdir, h0, plotz_HImf, hist_HImf, hist_HImf_cen, hist_HImf_sat, hist_HImf2)
     plot_H2mf_z0(plt, outdir, obsdir, h0, plotz_HImf, hist_H2mf, hist_H2mf_cen, hist_H2mf_sat)
     plot_SSFR_Mstars(plt, outdir, mainseq, mainseq_cen, mainseq_sat)
-    plot_mzr(plt, outdir, obsdir, h0, mzr, mzr_cen, mzr_sat)
+    #plot_mzr(plt, outdir, obsdir, h0, mzr, mzr_cen, mzr_sat)
     plot_SFR_Mstars(plt, outdir, obsdir, mainseqsf, mainseqsf_cen, mainseqsf_sat, mainseqsf_1s, mainseqHI, mainseqH2)
     plot_SFE_Mstars(plt, outdir, sfe, sfe_cen, sfe_sat)
     plot_fmzr(plt, outdir, fmzr)

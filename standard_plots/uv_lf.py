@@ -177,10 +177,8 @@ def prepare_data(hdf5_data, phot_data, phot_data_nod, LFs_dust, LFs_nodust, inde
     #star_formation_histories and SharkSED have the same number of galaxies in the same order, and so we can safely assume that to be the case.
     #to select the same galaxies in galaxies.hdf5 we need to ask for all of those that have a stellar mass > 0, and then assume that they are in the same order.
 
-    (h0, _, mdisk, mbulge, mhalo, mshalo, typeg, age, 
+    (h0, volh, mdisk, mbulge, mhalo, mshalo, typeg, age,
      sfr_disk, sfr_burst, id_gal) = hdf5_data
-   
-    #(bulge_diskins_hist, bulge_mergers_hist, disk_hist) = sfh
 
     #components:
     #(len(my_data), 2, 2, 5, nbands)
@@ -189,30 +187,32 @@ def prepare_data(hdf5_data, phot_data, phot_data_nod, LFs_dust, LFs_nodust, inde
     #2: total bulge
     #3: disk
     #4: total
+    seds_bulge_dummy = phot_data[0]
+    ngals = len(seds_bulge_dummy[0,:])
+    SEDs_dust = np.zeros(shape = (5,nbands,ngals))
+    SEDs_dust[0,:] = phot_data[0]
+    SEDs_dust[1,:] = phot_data[1]
+    SEDs_dust[2,:] = phot_data[2]
+    SEDs_dust[3,:] = phot_data[3]
+    SEDs_dust[4,:] = phot_data[4]
+    SEDs_nodust = np.zeros(shape = (5,nbands,ngals))
+    SEDs_nodust[0,:] = phot_data_nod[0]
+    SEDs_nodust[1,:] = phot_data_nod[1]
+    SEDs_nodust[2,:] = phot_data_nod[2]
+    SEDs_nodust[3,:] = phot_data_nod[3]
+    SEDs_nodust[4,:] = phot_data_nod[4]
 
-    ind = np.where(mdisk + mbulge > 0)
-    SEDs_dust = np.zeros(shape = (len(mdisk[ind]), 5, nbands))
-    SEDs_nodust = np.zeros(shape = (len(mdisk[ind]), 5, nbands))
-
-    p = 0
-    for c in range(0,5):
-        indust = phot_data[p]
-        innodust = phot_data_nod[p]
-        for i in range(0,nbands):
-            SEDs_dust[:,c,i] = indust[i,:]
-            SEDs_nodust[:,c,i] = innodust[i,:]
-        p = p + 1
-
+    #print(SEDs_dust.shape)
     for i in range(0,nbands):
         for c in range(0,5):
             #calculate LF with bands with dust
-            ind = np.where(SEDs_dust[:,c,i] < -1)
-            H, bins_edges = np.histogram(SEDs_dust[ind,c,i],bins=np.append(mbins,mupp))
+            ind = np.where(SEDs_dust[c,i,:] < -1)
+            H, bins_edges = np.histogram(SEDs_dust[c,i,:],bins=np.append(mbins,mupp))
             LFs_dust[index,c,i,:] = LFs_dust[index,c,i,:] + H
 
             #calculate LF of intrinsic bands 
-            ind = np.where(SEDs_nodust[:,c,i] < -1)
-            H, bins_edges = np.histogram(SEDs_nodust[ind,c,i],bins=np.append(mbins,mupp))
+            ind = np.where(SEDs_nodust[c,i,:] < -1)
+            H, bins_edges = np.histogram(SEDs_nodust[c,i,:],bins=np.append(mbins,mupp))
             LFs_nodust[index,c,i,:] = LFs_nodust[index,c,i,:] + H
 
 
@@ -220,15 +220,12 @@ def main(model_dir, outdir, redshift_table, subvols, obsdir):
 
     # Loop over redshift and subvolumes
     plt = common.load_matplotlib()
-    fields = {'galaxies': ('mstars_disk', 'mstars_bulge', 'mvir_hosthalo',
-                           'mvir_subhalo', 'type', 'mean_stellar_age', 
-                           'sfr_disk', 'sfr_burst', 'id_galaxy')}
-
-    #sfh_fields = {'bulges_diskins': ('star_formation_rate_histories'),
-    #              'bulges_mergers': ('star_formation_rate_histories'),
-    #              'disks': ('star_formation_rate_histories')}
 
     Variable_Ext = True
+
+    fields = {'galaxies': ('mstars_disk', 'mstars_bulge', 'mvir_hosthalo',
+                           'mvir_subhalo', 'type', 'mean_stellar_age',
+                           'sfr_disk', 'sfr_burst', 'id_galaxy')}
 
     fields_sed = {'SED/ab_dust': ('bulge_d','bulge_m','bulge_t','disk','total'),}
     fields_sed_nod = {'SED/ab_nodust': ('bulge_d','bulge_m','bulge_t','disk','total')}
@@ -239,8 +236,8 @@ def main(model_dir, outdir, redshift_table, subvols, obsdir):
     file_hdf5_sed = "Shark-SED-eagle-rr14.hdf5" 
     # Create histogram
     for index, snapshot in enumerate(snapshots):
-
         hdf5_data = common.read_data(model_dir, snapshot, fields, subvols)
+
         if(Variable_Ext == False):
            seds = common.read_photometry_data(model_dir, snapshot, fields_sed, subvols)
            seds_nod = common.read_photometry_data(model_dir, snapshot, fields_sed_nod, subvols)
@@ -276,8 +273,11 @@ def main(model_dir, outdir, redshift_table, subvols, obsdir):
     volcorr = 3.0*np.log10(h0)
 
     band = 0
-    for a,b,c,d,e in zip(xlf, LFs_dust[0,4,band,:], LFs_dust[1,4,band,:],LFs_dust[2,4,band,:],LFs_dust[3,4,band,:]):
-        print(a,b+volcorr-np.log10(dm),c+volcorr-np.log10(dm),d+volcorr-np.log10(dm),e+volcorr-np.log10(dm))
+    for i,zin in enumerate(z):
+       print("#UV LF at redshift:", zin)
+       print("#rest_Frame_mag num_Density_dust num_density_nodust")
+       for a,b,c in zip(xlf, LFs_dust[i,4,band,:], LFs_nodust[i,4,band,:]):
+           print(a,b+volcorr-np.log10(dm),c+volcorr-np.log10(dm))
     plot_uv_lf_evo(plt, outdir, obsdir, h0, LFs_dust, LFs_nodust, nbands)
 
 if __name__ == '__main__':
