@@ -326,7 +326,7 @@ BaryonBase Environment::remove_tidal_stripped_stars(SubhaloPtr &subhalo, Galaxy 
 			subhalo->mean_galaxy_making_stellar_halo += galaxy.stellar_mass() * lost_stellar.mass;
 
 			// strip first the disk of the galaxy and then the bulge:
-			if(lost_stellar.mass < galaxy.disk_stars.mass){
+			if(lost_stellar.mass <= galaxy.disk_stars.mass){
 				// in this case we strip material from the disk but not the bulge
 				float frac_lost = lost_stellar.mass/galaxy.disk_stars.mass;
 				lost_stellar.mass_metals = frac_lost * galaxy.disk_stars.mass_metals;
