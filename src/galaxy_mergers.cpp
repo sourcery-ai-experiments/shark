@@ -144,7 +144,7 @@ void GalaxyMergers::merging_timescale(Galaxy &galaxy, SubhaloPtr &primary, Subha
 
 		// Get the host virial radius and enclose mass at r
 		double host_rvir = darkmatterhalo->halo_virial_radius(primary->host_halo, simparams.redshifts[snapshot]) * conversion_factor;
-		double enc_mass = primary->Mvir * darkmatterhalo->enclosed_mass(r/host_rvir, primary->concentration);
+		double enc_mass = primary->host_halo->Mvir * darkmatterhalo->enclosed_mass(r/host_rvir, primary->concentration);
 
 		// The satellites mass including its baryon mass
 		double mgal = galaxy.baryon_mass();
@@ -219,7 +219,7 @@ void GalaxyMergers::merging_timescale(SubhaloPtr &primary, SubhaloPtr &secondary
 {
 	auto halo = primary->host_halo;
 	double tau_dyn = darkmatterhalo->halo_dynamical_time(halo, z);
-	double mp = primary->Mvir + primary->central_galaxy()->baryon_mass();
+	double mp = primary->host_halo->Mvir + primary->central_galaxy()->baryon_mass();
 
 	if (transfer_types2) {
 		for (auto &galaxy: secondary->type2_galaxies()) {

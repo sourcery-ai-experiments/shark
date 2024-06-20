@@ -282,8 +282,18 @@ void DarkMatterHalos::cooling_gas_sAM(Subhalo &subhalo, double z){
 
 	if(params.random_lambda){
 		double H0 = 10.0* cosmology->hubble_parameter(z);
-		subhalo.cold_halo_gas.sAM = constants::SQRT2 * std::pow(constants::G,0.66) *
-								    subhalo.lambda * std::pow(subhalo.Mvir,0.66) / std::pow(H0,0.33);
+
+		if(subhalo.subhalo_type == Subhalo::SATELLITE){
+		        // Define Mvir for satellite
+		        subhalo.cold_halo_gas.sAM = constants::SQRT2 * std::pow(constants::G,0.66) *
+			                                            subhalo.lambda * std::pow(subhalo.Mvir,0.66) / std::pow(H0,0.33);
+		}
+		else{
+		        // Define Mvir from host halo for central
+		        subhalo.cold_halo_gas.sAM = constants::SQRT2 * std::pow(constants::G,0.66) *
+			                                            subhalo.lambda * std::pow(subhalo.host_halo->Mvir,0.66) / std::pow(H0,0.33);
+		}
+		
 	}
 	else{
 		subhalo.cold_halo_gas.sAM = subhalo.hot_halo_gas.sAM;
@@ -302,19 +312,26 @@ void DarkMatterHalos::cooling_gas_sAM(Subhalo &subhalo, double z){
 float DarkMatterHalos::enclosed_total_mass(const Subhalo &subhalo, double z, float r){
 
 	ConstGalaxyPtr galaxy;
+	double mvir = 0;
+	double rvir = 0;
 	if(subhalo.subhalo_type == Subhalo::SATELLITE){
 		galaxy = subhalo.type1_galaxy();
+		// Define Mvir, Rvir at first infall
+		mvir = subhalo.Mvir_infall;
+		rvir = subhalo.rvir_infall;
 	}
 	else{
 		galaxy = subhalo.central_galaxy();
+		// Define Mvir, Rvir from host halo
+		mvir = subhalo.host_halo->Mvir;
+		rvir = halo_virial_radius(subhalo.host_halo, z);
 	}
 	double mgal = 0;
 
-	auto rvir = halo_virial_radius(subhalo.host_halo, z);
 	auto rnorm = r/rvir;
 
 	//calculate enclosed DM mass
-	auto mdm = subhalo.Mvir * enclosed_mass(rvir, subhalo.concentration);
+	auto mdm = mvir * enclosed_mass(rvir, subhalo.concentration);
 
 	//calculate enclosed hot gas mass (only relevant for isothermal sphere)
 	auto mhot = subhalo.hot_halo_gas.mass * std::pow(rnorm,2);

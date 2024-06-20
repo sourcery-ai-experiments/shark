@@ -167,6 +167,10 @@ std::vector<MergerTreePtr> TreeBuilder::build_trees(std::vector<HaloPtr> &halos,
 	LOG(info) << "Defining accretion rate using cosmology";
 	define_accretion_rate_from_dm(trees, sim_params, gas_cooling_params, *cosmology, AllBaryons);
 
+	// NOTE: new function to redefine central subhalo properties from host halo
+	// or satellite subhalo properties at infall
+	define_properties_halos(trees, sim_params, darkmatterhalos);
+	
 	// Define halo and subhalos ages and other relevant properties
 	LOG(info) << "Defining ages of halos and subhalos";
 	define_ages_halos(trees, sim_params, darkmatterhalos);
@@ -422,6 +426,52 @@ void TreeBuilder::define_accretion_rate_from_dm(const std::vector<MergerTreePtr>
 
 }
 
+void TreeBuilder::define_properties_halos(const std::vector<MergerTreePtr> &trees,
+					  SimulationParameters &sim_params,
+					  const DarkMatterHalosPtr &darkmatterhalos){
+
+        //Loop over trees
+        for(auto &tree: trees) {
+	        for(int snapshot=sim_params.max_snapshot; snapshot >= sim_params.min_snapshot; snapshot--) {
+		                for(auto &halo: tree->halos_at(snapshot)){
+
+				        for(auto &subhalo: halo->all_subhalos()){
+
+					        double z = sim_params.redshifts[subhalo->snapshot];
+						double npart = subhalo->Mvir/sim_params.particle_mass;
+						double mvir = 0;
+
+						// Calculate different properties: concentration, Vvir, Vcirc and lambda
+						if(subhalo->subhalo_type == Subhalo::CENTRAL){
+						        mvir = halo->Mvir;
+						}
+						else if(subhalo->subhalo_type == Subhalo::SATELLITE && subhalo->Mvir_infall != 0){
+						        mvir = subhalo->Mvir_infall;
+						}
+						else{
+						        // When the subhalo is born as satellite
+						        mvir = subhalo->Mvir;
+						}
+						
+						subhalo->concentration = darkmatterhalos->nfw_concentration(mvir, z);
+
+						if (subhalo->concentration < 1) {
+						        throw invalid_argument("concentration is <1, cannot continue. Please check input catalogue");
+						}
+
+						subhalo->lambda = darkmatterhalos->halo_lambda(*subhalo, mvir, z, npart);
+						subhalo->Vvir = darkmatterhalos->halo_virial_velocity(mvir, z);
+						subhalo->Vcirc = darkmatterhalos->halo_virial_velocity(mvir, z);
+
+					}
+					
+				}
+		}
+		
+	}
+	
+}
+						
 void TreeBuilder::define_ages_halos(const std::vector<MergerTreePtr> &trees,
 		SimulationParameters &sim_params,
 		const DarkMatterHalosPtr &darkmatterhalos){
@@ -458,7 +508,7 @@ void TreeBuilder::define_ages_halos(const std::vector<MergerTreePtr> &trees,
 						while(main_prog && subhalo->infall_t == 0){
 							if(main_prog->subhalo_type == Subhalo::CENTRAL){
 								subhalo->infall_t = sim_params.redshifts[snap];
-								subhalo->Mvir_infall = main_prog->Mvir;
+								subhalo->Mvir_infall = main_prog->host_halo->Mvir;
 								subhalo->rvir_infall = darkmatterhalos->halo_virial_radius(main_prog->host_halo, sim_params.redshifts[snap]);
 
 								//assume the stripping radius is equal to the virial radius at infall (which the largest it can be).

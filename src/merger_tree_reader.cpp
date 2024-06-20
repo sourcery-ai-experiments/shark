@@ -215,21 +215,21 @@ const std::vector<SubhaloPtr> SURFSReader::read_subhalos(unsigned int batch)
 		subhalo->L.y = L[3 * i + 1];
 		subhalo->L.z = L[3 * i + 2];
 
-		subhalo->Vcirc = Vcirc[i];
-
-		auto z = simulation_params.redshifts[subhalo->snapshot];
-		subhalo->concentration = dark_matter_halos->nfw_concentration(subhalo->Mvir, z);
-
-		if (subhalo->concentration < 1) {
-			throw invalid_argument("concentration is <1, cannot continue. Please check input catalogue");
-		}
-
-		double npart = Mvir[i]/simulation_params.particle_mass;
-
-		subhalo->lambda = dark_matter_halos->halo_lambda(*subhalo, Mvir[i], z, npart);
-
-		// Calculate virial velocity from the virial mass and redshift.
-		subhalo->Vvir = dark_matter_halos->halo_virial_velocity(subhalo->Mvir, z);
+//		subhalo->Vcirc = Vcirc[i];
+//
+//		auto z = simulation_params.redshifts[subhalo->snapshot];
+//		subhalo->concentration = dark_matter_halos->nfw_concentration(subhalo->Mvir, z);
+//
+//		if (subhalo->concentration < 1) {
+//			throw invalid_argument("concentration is <1, cannot continue. Please check input catalogue");
+//		}
+//
+//		double npart = Mvir[i]/simulation_params.particle_mass;
+//
+//		subhalo->lambda = dark_matter_halos->halo_lambda(*subhalo, Mvir[i], z, npart);
+//
+//		// Calculate virial velocity from the virial mass and redshift.
+//		subhalo->Vvir = dark_matter_halos->halo_virial_velocity(subhalo->Mvir, z);
 
 		// Done, save it now
 		t_subhalos[thread_idx].emplace_back(std::move(subhalo));
