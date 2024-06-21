@@ -157,7 +157,7 @@ void AGNFeedback::plant_seed_smbh(Subhalo &subhalo){
 			mvir = subhalo.Mvir_infall;
 		}
 		else{
-			mvir = subhalo.Mvir
+		  mvir = subhalo.Mvir;
 		}
 		if (mvir > parameters.mhalo_seed && central->smbh.mass ==0){
 				central->smbh.mass = parameters.mseed;

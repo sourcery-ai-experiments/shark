@@ -138,7 +138,7 @@ const std::vector<SubhaloPtr> SURFSReader::read_subhalos(unsigned int batch)
 	std::vector<int> IsInterpolated = batch_file.read_dataset_v<int>("haloTrees/isInterpolated");
 
 	// Read transients file
-	std::vector<Subhalo::id
+	std::vector<Subhalo::id_t> transientsIndex;
 
 	if (transients_prefix != "none"){
 	        // read transients file

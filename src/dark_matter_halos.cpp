@@ -234,7 +234,7 @@ double DarkMatterHalos::disk_size_theory (Subhalo &subhalo, double z){
 		        Rvir = subhalo.rvir_infall;
 			lambda = subhalo.lambda_infall;
 		}
-		if{
+		else{
 		        // When satellites are born as satellites (not infall properties)
 		        Rvir = halo_virial_radius(subhalo.Mvir, z);
 			lambda = subhalo.lambda;

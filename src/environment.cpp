@@ -23,6 +23,7 @@
 
 
 #include "environment.h"
+#include "halo.h"
 #include "subhalo.h"
 #include "galaxy.h"
 #include "cosmology.h"

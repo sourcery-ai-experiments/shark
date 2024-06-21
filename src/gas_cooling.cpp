@@ -420,7 +420,7 @@ double GasCooling::cooling_rate(Subhalo &subhalo, Galaxy &galaxy, double z, doub
 	}
 	else {
 		//If subhalo is a satellite born as satellite, then adopt current virial radius.
-		Rvir = cosmology->comoving_to_physical_size(darkmatterhalos->halo_virial_radius(subhhalo.Mvir, z), z);//physical Mpc
+		Rvir = cosmology->comoving_to_physical_size(darkmatterhalos->halo_virial_radius(subhalo.Mvir, z), z);//physical Mpc
 	}
 
 	/**

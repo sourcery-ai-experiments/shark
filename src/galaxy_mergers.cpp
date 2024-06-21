@@ -592,7 +592,7 @@ void GalaxyMergers::create_starbursts(HaloPtr &halo, double z, double delta_t){
 				double delta_mbh = 0;
 				double delta_mzbh = 0;
 
-				if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Vvir_infall != 0){
+				if(subhalo->subhalo_type == Subhalo::SATELLITE && subhalo->Vvir_infall != 0){
 				        // at infall for subhalos that become satellite
 				        delta_mbh = agnfeedback->smbh_growth_starburst(galaxy.bulge_gas.mass, subhalo->Vvir_infall, tdyn, galaxy);
 				}
