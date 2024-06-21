@@ -519,7 +519,7 @@ double Environment::ram_pressure(const SubhaloPtr &primary,
 	auto vrel = secondary.velocity - primary->velocity + hubble_flow;
 	auto vrel_norm = vrel.norm();
 
-	auto rvir_prim = darkmatterhalos->halo_virial_radius(primary->host_halo, z);
+	auto rvir_prim = darkmatterhalos->halo_virial_radius(primary->host_halo->Mvir, z);
 	auto rho_cen = primary->hot_halo_gas.mass / (shark::constants::PI4 * std::pow(rvir_prim,2) * rsat) / 1e18 ; //in Msun/pc^3
 
 	return rho_cen * std::pow(vrel_norm,2);

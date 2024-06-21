@@ -143,26 +143,31 @@ double DarkMatterHalos::subhalo_dynamical_time (Subhalo &subhalo, double z){
 
 	double r = 0;
 	double v = 0;
-
+ 
 	if(subhalo.subhalo_type == Subhalo::CENTRAL){
-		r = halo_virial_radius(subhalo.host_halo, z);
+		r = halo_virial_radius(subhalo.host_halo->Mvir, z);
 		v = subhalo.Vvir;
 	}
-	else{
+	else if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0){
 		r = subhalo.rvir_infall;
-		v = halo_virial_velocity(subhalo.Mvir_infall, subhalo.infall_t);
+		v = subhalo.Vvir_infall;
+	}
+	else{
+	        // When the satellite is born as satellite (no infall properties)
+		r = halo_virial_radius(subhalo.Mvir, z);;
+		v = subhalo.Vvir;
 	}
 
 	return constants::MPCKM2GYR * cosmology->comoving_to_physical_size(r, z) / v;
 }
 
-double DarkMatterHalos::halo_virial_radius(const HaloPtr &halo, double z){
+double DarkMatterHalos::halo_virial_radius(double mvir, double z){
 
 	/**
 	 * Function to calculate the halo virial radius. Returns virial radius in physical Mpc/h.
 	 */
-        double v = halo_virial_velocity(halo->Mvir, z);
-	return constants::G * halo->Mvir / std::pow(v,2);
+        double v = halo_virial_velocity(mvir, z);
+	return constants::G * mvir / std::pow(v,2);
 }
 
 
@@ -172,6 +177,13 @@ float DarkMatterHalos::halo_lambda (const Subhalo &subhalo, float m, double z, d
 	double H0 = cosmology->hubble_parameter(z);
 	double lambda = subhalo.L.norm() / m * 1.5234153 / std::pow(constants::G * m, 0.666) * std::pow(H0,0.33);
 
+	if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0){
+	        lambda = subhalo.L_infall.norm() / m * 1.5234153 / std::pow(constants::G * m, 0.666) * std::pow(H0,0.33);
+	}
+	else{
+	        lambda = subhalo.L.norm() / m * 1.5234153 / std::pow(constants::G * m, 0.666) * std::pow(H0,0.33);
+	}
+	
 	if(lambda > 1){
 			lambda = 1;
 	}
@@ -211,9 +223,22 @@ double DarkMatterHalos::disk_size_theory (Subhalo &subhalo, double z){
 
 	if(params.sizemodel == DarkMatterHaloParameters::MO98){
 		//Calculation comes from assuming rdisk = 2/sqrt(2) *lambda *Rvir;
-		double Rvir = halo_virial_radius(subhalo.host_halo, z);
-
-		double lambda = subhalo.lambda;
+		double Rvir = 0;
+		double lambda = 0;
+		
+		if(subhalo.subhalo_type == Subhalo::CENTRAL){
+		        Rvir = halo_virial_radius(subhalo.host_halo->Mvir, z);
+			lambda = subhalo.host_halo->lambda;
+		}
+		else if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0){
+		        Rvir = subhalo.rvir_infall;
+			lambda = subhalo.lambda_infall;
+		}
+		if{
+		        // When satellites are born as satellites (not infall properties)
+		        Rvir = halo_virial_radius(subhalo.Mvir, z);
+			lambda = subhalo.lambda;
+		}
 
 		double rdisk = 3/constants::SQRT2 * lambda * Rvir;
 
@@ -283,15 +308,20 @@ void DarkMatterHalos::cooling_gas_sAM(Subhalo &subhalo, double z){
 	if(params.random_lambda){
 		double H0 = 10.0* cosmology->hubble_parameter(z);
 
-		if(subhalo.subhalo_type == Subhalo::SATELLITE){
-		        // Define Mvir for satellite
-		        subhalo.cold_halo_gas.sAM = constants::SQRT2 * std::pow(constants::G,0.66) *
-			                                            subhalo.lambda * std::pow(subhalo.Mvir,0.66) / std::pow(H0,0.33);
-		}
-		else{
+		if(subhalo.subhalo_type == Subhalo::CENTRAL){
 		        // Define Mvir from host halo for central
 		        subhalo.cold_halo_gas.sAM = constants::SQRT2 * std::pow(constants::G,0.66) *
-			                                            subhalo.lambda * std::pow(subhalo.host_halo->Mvir,0.66) / std::pow(H0,0.33);
+			                                            subhalo.host_halo->lambda * std::pow(subhalo.host_halo->Mvir,0.66) / std::pow(H0,0.33);
+		}
+		else if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0){
+		        // Define Mvir at infall for satellite
+		        subhalo.cold_halo_gas.sAM = constants::SQRT2 * std::pow(constants::G,0.66) *
+			                                            subhalo.lambda_infall * std::pow(subhalo.Mvir_infall,0.66) / std::pow(H0,0.33);
+		}
+		else{
+		        // Define current Mvir for satellite born as satellite (no infall)
+		        subhalo.cold_halo_gas.sAM = constants::SQRT2 * std::pow(constants::G,0.66) *
+			                                            subhalo.lambda * std::pow(subhalo.Mvir,0.66) / std::pow(H0,0.33);
 		}
 		
 	}
@@ -314,24 +344,28 @@ float DarkMatterHalos::enclosed_total_mass(const Subhalo &subhalo, double z, flo
 	ConstGalaxyPtr galaxy;
 	double mvir = 0;
 	double rvir = 0;
-	if(subhalo.subhalo_type == Subhalo::SATELLITE){
-		galaxy = subhalo.type1_galaxy();
-		// Define Mvir, Rvir at first infall
-		mvir = subhalo.Mvir_infall;
-		rvir = subhalo.rvir_infall;
-	}
-	else{
+	double concentration = 0;
+	if(subhalo.subhalo_type == Subhalo::CENTRAL){
 		galaxy = subhalo.central_galaxy();
 		// Define Mvir, Rvir from host halo
 		mvir = subhalo.host_halo->Mvir;
-		rvir = halo_virial_radius(subhalo.host_halo, z);
+		rvir = halo_virial_radius(subhalo.host_halo->Mvir, z);
+		concentration = subhalo.host_halo->concentration;
+	}
+	else{
+		galaxy = subhalo.type1_galaxy();
+		// Define current Mvir, Rvir for satellites
+		// since this is to compute the ram pressure stripping
+		mvir = subhalo.Mvir;
+		rvir = halo_virial_radius(subhalo.Mvir, z);
+		concentration = subhalo.concentration;
 	}
 	double mgal = 0;
 
 	auto rnorm = r/rvir;
 
 	//calculate enclosed DM mass
-	auto mdm = mvir * enclosed_mass(rvir, subhalo.concentration);
+	auto mdm = mvir * enclosed_mass(rvir, concentration);
 
 	//calculate enclosed hot gas mass (only relevant for isothermal sphere)
 	auto mhot = subhalo.hot_halo_gas.mass * std::pow(rnorm,2);
@@ -346,7 +380,7 @@ float DarkMatterHalos::enclosed_total_mass(const Subhalo &subhalo, double z, flo
 
 void DarkMatterHalos::disk_sAM(Subhalo &subhalo, Galaxy &galaxy, double z){
 
-	double rvir = halo_virial_radius(subhalo.host_halo, z);
+	double rvir = halo_virial_radius(subhalo.host_halo->Mvir, z);
 
 	//disk properties. Use composite size of disk.
 	double rdisk = galaxy.disk_size();
@@ -367,7 +401,7 @@ void DarkMatterHalos::disk_sAM(Subhalo &subhalo, Galaxy &galaxy, double z){
 	}
 
 	//halo properties.
-	double ch = subhalo.concentration;
+	double ch = subhalo.host_halo->concentration;
 	double mvir = subhalo.host_halo->Mvir;
 
 	double xd = rdisk / rvir;
@@ -385,7 +419,7 @@ void DarkMatterHalos::disk_sAM(Subhalo &subhalo, Galaxy &galaxy, double z){
 
 void DarkMatterHalos::bulge_sAM(Subhalo &subhalo, Galaxy &galaxy, double z){
 
-	double rvir = halo_virial_radius(subhalo.host_halo, z);
+	double rvir = halo_virial_radius(subhalo.host_halo->Mvir, z);
 
 	//disk properties. Use composite size of disk.
 	double rdisk = galaxy.disk_size();
@@ -406,7 +440,7 @@ void DarkMatterHalos::bulge_sAM(Subhalo &subhalo, Galaxy &galaxy, double z){
 	}
 
 	//halo properties.
-	double ch = subhalo.concentration;
+	double ch = subhalo.host_halo->concentration;
 	double mvir = subhalo.host_halo->Mvir;
 
 	if(rbulge > 0){

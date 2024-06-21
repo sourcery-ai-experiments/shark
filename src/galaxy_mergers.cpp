@@ -143,8 +143,8 @@ void GalaxyMergers::merging_timescale(Galaxy &galaxy, SubhaloPtr &primary, Subha
 		double vrel = std::sqrt(vxrel*vxrel + vyrel*vyrel + vzrel*vzrel);
 
 		// Get the host virial radius and enclose mass at r
-		double host_rvir = darkmatterhalo->halo_virial_radius(primary->host_halo, simparams.redshifts[snapshot]) * conversion_factor;
-		double enc_mass = primary->host_halo->Mvir * darkmatterhalo->enclosed_mass(r/host_rvir, primary->concentration);
+		double host_rvir = darkmatterhalo->halo_virial_radius(primary->host_halo->Mvir, simparams.redshifts[snapshot]) * conversion_factor;
+		double enc_mass = primary->host_halo->Mvir * darkmatterhalo->enclosed_mass(r/host_rvir, primary->host_halo->concentration);
 
 		// The satellites mass including its baryon mass
 		double mgal = galaxy.baryon_mass();
@@ -589,8 +589,16 @@ void GalaxyMergers::create_starbursts(HaloPtr &halo, double z, double delta_t){
 
 				// Calculate black hole growth due to starburst.
 				double tdyn = agnfeedback->smbh_accretion_timescale(galaxy, z);
-				double delta_mbh = agnfeedback->smbh_growth_starburst(galaxy.bulge_gas.mass, subhalo->Vvir, tdyn, galaxy);
+				double delta_mbh = 0;
 				double delta_mzbh = 0;
+
+				if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Vvir_infall != 0){
+				        // at infall for subhalos that become satellite
+				        delta_mbh = agnfeedback->smbh_growth_starburst(galaxy.bulge_gas.mass, subhalo->Vvir_infall, tdyn, galaxy);
+				}
+				else{
+				        delta_mbh = agnfeedback->smbh_growth_starburst(galaxy.bulge_gas.mass, subhalo->Vvir, tdyn, galaxy);
+				}
 
 				if(galaxy.bulge_gas.mass > 0){
 					delta_mzbh = delta_mbh/galaxy.bulge_gas.mass * galaxy.bulge_gas.mass_metals;
@@ -653,7 +661,7 @@ double GalaxyMergers::bulge_size_merger(double mass_ratio, double mgas_ratio, co
 
  		auto subhalo_central = halo->central_subhalo;
 
- 		enc_mass = darkmatterhalo->enclosed_mass(rcentral/darkmatterhalo->halo_virial_radius(halo, z), subhalo_central->concentration);
+ 		enc_mass = darkmatterhalo->enclosed_mass(rcentral/darkmatterhalo->halo_virial_radius(halo->Mvir, z), subhalo_central->host_halo->concentration);
 
  		// Because central part of the DM halo behaves like the baryons, the mass of the central galaxy includes
  		// the DM mass enclosed by rcentral.

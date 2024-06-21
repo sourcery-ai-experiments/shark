@@ -55,6 +55,7 @@ public:
 
 	bool hydrorun = false;
 
+        std::string transients_prefix {"transients."};
 
 	void load_simulation_tables(const std::string &redshift_file);
 };
