@@ -149,6 +149,7 @@ public:
 		ode_solver.evolve(ode_values, delta_t);
 		galaxy_ode_evaluations += ode_solver.num_evaluations();
 		to_galaxy(ode_values, subhalo, galaxy, delta_t);
+
 	}
 
 	void evolve_galaxy_starburst(Subhalo &subhalo, Galaxy &galaxy, double z, double delta_t, bool from_galaxy_merger)
@@ -170,7 +171,7 @@ public:
 		starburst_params.rgas = galaxy.bulge_gas.rscale; //gas scale radius.
 		starburst_params.rstar = galaxy.bulge_stars.rscale; //stellar scale radius.
 		if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Vvir_infall != 0){
-		        starburst_params.vsubh = subhalo.Vvir;
+		        starburst_params.vsubh = subhalo.Vvir_infall;
 		}
 		else{
 		        starburst_params.vsubh = subhalo.Vvir;

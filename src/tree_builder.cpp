@@ -159,6 +159,11 @@ std::vector<MergerTreePtr> TreeBuilder::build_trees(std::vector<HaloPtr> &halos,
 	// Redefine angular momentum in the case of interpolated halos.
 	// spin_interpolated_halos(trees, sim_params);
 
+	// NOTE: new function to redefine central subhalo properties from host halo
+	// or satellite subhalo properties at infall
+	LOG(info) << "Defining velocity, concentration and lambda of subhalos";
+	define_properties_halos(trees, sim_params, darkmatterhalos);
+
 	// Define central subhalos
 	LOG(info) << "Defining central subhalos";
 	define_central_subhalos(trees, sim_params, dark_matter_params);
@@ -166,11 +171,6 @@ std::vector<MergerTreePtr> TreeBuilder::build_trees(std::vector<HaloPtr> &halos,
 	// Define accretion rate from DM in case we want this.
 	LOG(info) << "Defining accretion rate using cosmology";
 	define_accretion_rate_from_dm(trees, sim_params, gas_cooling_params, *cosmology, AllBaryons);
-
-	// NOTE: new function to redefine central subhalo properties from host halo
-	// or satellite subhalo properties at infall
-	LOG(info) << "Defining velocity, concentration and lambda of subhalos";
-	define_properties_halos(trees, sim_params, darkmatterhalos);
 
 	// Define halo and subhalos ages and other relevant properties
 	LOG(info) << "Defining ages of halos and subhalos";

@@ -233,6 +233,9 @@ const std::vector<SubhaloPtr> SURFSReader::read_subhalos(unsigned int batch)
 		subhalo->L.y = L[3 * i + 1];
 		subhalo->L.z = L[3 * i + 2];
 
+		//Assign circular velocity
+		subhalo->Vcirc = Vcirc[i];
+
 		if (transients_prefix != "none"){
 		        // create flag to indicate this subhalo is transient
 		        subhalo->transient = std::find(std::begin(transientsIndex), std::end(transientsIndex), nodeIndex[i]) != std::end(transientsIndex);
