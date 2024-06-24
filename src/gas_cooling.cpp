@@ -354,7 +354,10 @@ double GasCooling::cooling_rate(Subhalo &subhalo, Galaxy &galaxy, double z, doub
 	}
 
 	//Assume hot halo has the same specific angular momentum of DM halo.
+	//NOTE: change calculation to use subhalo spin instead of L.
+	//NOTE: change to use different definitions for centrals/satellites. For centrals it should use the host halo properties and for satellites, the current subhalo properties.
 	subhalo.hot_halo_gas.sAM = subhalo.L.norm() / subhalo.Mvir;
+
 
 	/**
 	* We need to convert masses and velocities to physical units before proceeding with calculation.

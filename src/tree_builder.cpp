@@ -167,6 +167,9 @@ std::vector<MergerTreePtr> TreeBuilder::build_trees(std::vector<HaloPtr> &halos,
 	LOG(info) << "Defining accretion rate using cosmology";
 	define_accretion_rate_from_dm(trees, sim_params, gas_cooling_params, *cosmology, AllBaryons);
 
+	//a new function which redefines central subhalo properties based on halo Mvir
+	//
+
 	// Define halo and subhalos ages and other relevant properties
 	LOG(info) << "Defining ages of halos and subhalos";
 	define_ages_halos(trees, sim_params, darkmatterhalos);
