@@ -140,7 +140,7 @@ const std::vector<SubhaloPtr> SURFSReader::read_subhalos(unsigned int batch)
 	// Read transients file
 	std::vector<Subhalo::id_t> transientsIndex;
 
-	if (transients_prefix != "none"){
+	if (!transients_prefix.empty()){
 	        // read transients file
 	        const auto fname_transients = get_transients_filename(batch);
 		hdf5::Reader batch_transients(fname_transients);
@@ -236,7 +236,7 @@ const std::vector<SubhaloPtr> SURFSReader::read_subhalos(unsigned int batch)
 		//Assign circular velocity
 		subhalo->Vcirc = Vcirc[i];
 
-		if (transients_prefix != "none"){
+		if (!transients_prefix.empty()){
 		        // create flag to indicate this subhalo is transient
 		        subhalo->transient = std::find(std::begin(transientsIndex), std::end(transientsIndex), nodeIndex[i]) != std::end(transientsIndex);
 		}
