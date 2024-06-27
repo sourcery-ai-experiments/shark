@@ -69,8 +69,9 @@ private:
 	void remove_satellite(HaloPtr &halo, SubhaloPtr &subhalo);
  	void define_ages_halos(const std::vector<MergerTreePtr> &trees, SimulationParameters &sim_params, const DarkMatterHalosPtr &darkmatterhalos);
 	void ignore_late_massive_halos(std::vector<MergerTreePtr> &trees,  SimulationParameters sim_params, ExecutionParameters exec_params);
-        void define_properties_halos(const std::vector<MergerTreePtr> &trees, SimulationParameters &sim_params, const DarkMatterHalosPtr &darkmatterhalos);
-  
+	void define_properties_central_subhalos(const std::vector<MergerTreePtr> &trees, SimulationParameters &sim_params, const DarkMatterHalosPtr &darkmatterhalos);
+	void define_properties_satellite_subhalos(const std::vector<MergerTreePtr> &trees, SimulationParameters &sim_params, const DarkMatterHalosPtr &darkmatterhalos);
+
 private:
 	ExecutionParameters exec_params;
 	unsigned int threads = 1;

@@ -288,7 +288,7 @@ void Environment::process_satellite_subhalo_environment(Subhalo &satellite_subha
 				// is stars_tidal_stripped.mass>0 is because stripping should have occurred already.
 				if(satellite.stars_tidal_stripped.mass == 0){
 					// compute how much has been lost since galaxy infall
-				        lost_stellar.mass = ratio_sm * satellite.star_central_infall.mass;
+					lost_stellar.mass = ratio_sm * satellite.star_central_infall.mass;
 
 					lost_stellar = remove_tidal_stripped_stars(central_subhalo, satellite, lost_stellar);
 

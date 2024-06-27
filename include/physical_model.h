@@ -135,10 +135,10 @@ public:
 
 		params.rstar      = galaxy.disk_stars.rscale; //stellar scale radius.
 		if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Vvir_infall != 0){
-		         params.vsubh      = subhalo.Vvir_infall;
+			params.vsubh = subhalo.Vvir_infall;
 		}
 		else{
-		         params.vsubh      = subhalo.Vvir;
+			params.vsubh = subhalo.Vvir;
 		}
 		params.jcold_halo = subhalo.cold_halo_gas.sAM;
 		params.delta_t = delta_t;
@@ -171,10 +171,10 @@ public:
 		starburst_params.rgas = galaxy.bulge_gas.rscale; //gas scale radius.
 		starburst_params.rstar = galaxy.bulge_stars.rscale; //stellar scale radius.
 		if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Vvir_infall != 0){
-		        starburst_params.vsubh = subhalo.Vvir_infall;
+			starburst_params.vsubh = subhalo.Vvir_infall;
 		}
 		else{
-		        starburst_params.vsubh = subhalo.Vvir;
+			starburst_params.vsubh = subhalo.Vvir;
 		}
 		starburst_params.vgal = galaxy.bulge_gas.sAM / galaxy.bulge_gas.rscale;
 		starburst_params.delta_t = delta_t;

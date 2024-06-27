@@ -327,12 +327,12 @@ double GasCooling::cooling_rate(Subhalo &subhalo, Galaxy &galaxy, double z, doub
 			subhalo.ejected_galaxy_gas.mass += mass_remove;
 			subhalo.hot_halo_gas.mass_metals -= frac_remove * subhalo.hot_halo_gas.mass_metals;
 			subhalo.hot_halo_gas.mass -= mass_remove;
-        
+
 			if(subhalo.hot_halo_gas.mass <= 0){
 				subhalo.hot_halo_gas.restore_baryon();
 				return 0;
 			}
-        
+
 		}
 	}
 
@@ -357,13 +357,13 @@ double GasCooling::cooling_rate(Subhalo &subhalo, Galaxy &galaxy, double z, doub
 	// NOTE: change depending it is satellite or central
 	// NOTE: change using spin
 	if(subhalo.subhalo_type == Subhalo::CENTRAL){
-	         subhalo.hot_halo_gas.sAM = subhalo.L.norm() / subhalo.host_halo->Mvir;
+		subhalo.hot_halo_gas.sAM = subhalo.L.norm() / subhalo.host_halo->Mvir;
 	}
 	else if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0){
-	         subhalo.hot_halo_gas.sAM = subhalo.L_infall.norm() / subhalo.Mvir_infall;
+		subhalo.hot_halo_gas.sAM = subhalo.L_infall.norm() / subhalo.Mvir_infall;
 	}
 	else{
-	         subhalo.hot_halo_gas.sAM = subhalo.L.norm() / subhalo.Mvir;
+		subhalo.hot_halo_gas.sAM = subhalo.L.norm() / subhalo.Mvir;
 	}
 	
 	/**
@@ -385,8 +385,7 @@ double GasCooling::cooling_rate(Subhalo &subhalo, Galaxy &galaxy, double z, doub
 
 	// If subhalo is a satellite, then use the virial velocity the subhalo had at infall.
 	if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Vvir_infall != 0){
-	        vvir = subhalo.Vvir_infall;
-		fhot = mhot / subhalo.Mvir_infall;
+		vvir = subhalo.Vvir_infall;
 	}
 
 	double zhot = 0;
