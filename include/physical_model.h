@@ -32,6 +32,7 @@
 
 #include "agn_feedback.h"
 #include "components.h"
+#include "dark_matter_halos.h"
 #include "galaxy.h"
 #include "gas_cooling.h"
 #include "numerical_constants.h"
@@ -84,8 +85,7 @@ public:
 	PhysicalModel(
 			double ode_solver_precision,
 			ODESolver::ode_evaluator evaluator,
-			GasCooling gas_cooling,
-			DarkMatterHaloParameters dark_matter_params) :
+			GasCooling gas_cooling) :
 		params {*this, false, 0., 0., 0., 0., 0., 0., 0., 0., 0., {}},
 		starburst_params {*this, true, 0., 0., 0., 0., 0., 0., 0., 0., 0., {}},
 		ode_solver(evaluator, NC, ode_solver_precision, &params),
@@ -100,7 +100,7 @@ public:
 
 	virtual ~PhysicalModel() = default;
 
-	void evolve_galaxy(Subhalo &subhalo, Galaxy &galaxy, double z, double delta_t)
+	void evolve_galaxy(Subhalo &subhalo, Galaxy &galaxy, double z, double delta_t, bool apply_fix_to_mass_swapping_events)
 	{
 		/**
 		 * Parameters that are needed as input in the ode_solver:
@@ -137,7 +137,7 @@ public:
 		params.rstar      = galaxy.disk_stars.rscale; //stellar scale radius.
 		params.vsubh      = subhalo.Vvir;
 		if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Vvir_infall != 0 &&
-				dark_matter_params.apply_fix_to_mass_swapping_events){
+				apply_fix_to_mass_swapping_events){
 			params.vsubh = subhalo.Vvir_infall;
 		}
 
@@ -153,7 +153,7 @@ public:
 
 	}
 
-	void evolve_galaxy_starburst(Subhalo &subhalo, Galaxy &galaxy, double z, double delta_t, bool from_galaxy_merger)
+	void evolve_galaxy_starburst(Subhalo &subhalo, Galaxy &galaxy, double z, double delta_t, bool apply_fix_to_mass_swapping_events, bool from_galaxy_merger)
 	{
 
 		/**
@@ -174,7 +174,7 @@ public:
 		starburst_params.vsubh = subhalo.Vvir;
 
 		if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Vvir_infall != 0 &&
-				dark_matter_params.apply_fix_to_mass_swapping_events){
+				apply_fix_to_mass_swapping_events){
 			starburst_params.vsubh = subhalo.Vvir_infall;
 		}
 
@@ -229,8 +229,7 @@ public:
 			AGNFeedback agn_feedback,
 			RecyclingParameters recycling_parameters,
 			GasCoolingParameters gas_cooling_parameters,
-			AGNFeedbackParameters agn_parameters,
-			DarkMatterHaloParameters dark_matter_params);
+			AGNFeedbackParameters agn_parameters);
 
 	void from_galaxy(std::vector<double> &y, const Subhalo &subhalo, const Galaxy &galaxy) override;
 	void to_galaxy(const std::vector<double> &y, Subhalo &subhalo, Galaxy &galaxy, double delta_t) override;

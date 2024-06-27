@@ -44,12 +44,14 @@ DiskInstabilityParameters::DiskInstabilityParameters(const Options &options)
 DiskInstability::DiskInstability(DiskInstabilityParameters parameters,
 		GalaxyMergerParameters merger_params,
 		SimulationParameters simparams,
+		DarkMatterHaloParameters darkmatterparams,
 		DarkMatterHalosPtr darkmatterhalo,
 		std::shared_ptr<BasicPhysicalModel> physicalmodel,
 		AGNFeedbackPtr agnfeedback) :
 	parameters(parameters),
 	merger_params(merger_params),
 	simparams(std::move(simparams)),
+	darkmatterparams(std::move(darkmatterparams)),
 	darkmatterhalo(std::move(darkmatterhalo)),
 	physicalmodel(std::move(physicalmodel)),
 	agnfeedback(std::move(agnfeedback))
@@ -206,7 +208,7 @@ void DiskInstability::create_starburst(SubhaloPtr &subhalo, Galaxy &galaxy, doub
 		galaxy.bulge_gas.mass_metals -= delta_mzbh;
 
 		// Trigger starburst.
-		physicalmodel->evolve_galaxy_starburst(*subhalo, galaxy, z, delta_t, false);
+		physicalmodel->evolve_galaxy_starburst(*subhalo, galaxy, z, delta_t, darkmatterparams.apply_fix_to_mass_swapping_events, false);
 
 		// Check for small gas reservoirs left in the bulge.
 		if(galaxy.bulge_gas.mass > 0 && galaxy.bulge_gas.mass < merger_params.mass_min){

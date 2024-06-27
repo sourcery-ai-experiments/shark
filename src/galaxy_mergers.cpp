@@ -59,6 +59,7 @@ GalaxyMergers::GalaxyMergers(GalaxyMergerParameters parameters,
 		ExecutionParameters exec_params,
 		AGNFeedbackParameters agn_params,
 		SimulationParameters simparams,
+		DarkMatterHaloParameters dark_matter_params,
 		DarkMatterHalosPtr darkmatterhalo,
 		std::shared_ptr<BasicPhysicalModel> physicalmodel,
 		AGNFeedbackPtr agnfeedback) :
@@ -68,6 +69,7 @@ GalaxyMergers::GalaxyMergers(GalaxyMergerParameters parameters,
 	exec_params(std::move(exec_params)),
 	agn_params(std::move(agn_params)),
 	simparams(std::move(simparams)),
+	dark_matter_params(dark_matter_params),
 	darkmatterhalo(std::move(darkmatterhalo)),
 	physicalmodel(std::move(physicalmodel)),
 	agnfeedback(std::move(agnfeedback)),
@@ -612,7 +614,7 @@ void GalaxyMergers::create_starbursts(HaloPtr &halo, double z, double delta_t){
 				galaxy.bulge_gas.mass_metals -= delta_mzbh;
 
 				// Trigger starburst.
-				physicalmodel->evolve_galaxy_starburst(*subhalo, galaxy, z, delta_t, true);
+				physicalmodel->evolve_galaxy_starburst(*subhalo, galaxy, z, delta_t, dark_matter_params.apply_fix_to_mass_swapping_events, true);
 
 				// Grow SMBH after starbursts, as during it we need a realistical measurement of Ledd the BH had before the starburst.
 				galaxy.smbh.mass += delta_mbh;

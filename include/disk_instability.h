@@ -47,6 +47,7 @@ public:
 	DiskInstability (DiskInstabilityParameters parameters,
 			GalaxyMergerParameters merger_params,
 			SimulationParameters simparams,
+			DarkMatterHaloParameters darkmatterparams,
 			DarkMatterHalosPtr darkmatterhalo,
 			std::shared_ptr<BasicPhysicalModel> physicalmodel,
 			AGNFeedbackPtr agnfeedback);
@@ -67,6 +68,7 @@ private:
 	DiskInstabilityParameters parameters;
 	GalaxyMergerParameters merger_params;
 	SimulationParameters simparams;
+	DarkMatterHaloParameters darkmatterparams;
 	DarkMatterHalosPtr darkmatterhalo;
 	std::shared_ptr<BasicPhysicalModel> physicalmodel;
 	AGNFeedbackPtr agnfeedback;

@@ -159,16 +159,14 @@ BasicPhysicalModel::BasicPhysicalModel(
 		AGNFeedback agn_feedback,
 		RecyclingParameters recycling_parameters,
 		GasCoolingParameters gas_cooling_parameters,
-		AGNFeedbackParameters agn_parameters,
-		DarkMatterHaloParameters dark_matter_params) :
-	PhysicalModel(ode_solver_precision, basic_physicalmodel_evaluator, std::move(gas_cooling), std::move(dark_matter_params)),
+		AGNFeedbackParameters agn_parameters) :
+	PhysicalModel(ode_solver_precision, basic_physicalmodel_evaluator, std::move(gas_cooling)),
 	stellar_feedback(stellar_feedback),
 	star_formation(std::move(star_formation)),
 	agn_feedback(std::move(agn_feedback)),
 	recycling_parameters(recycling_parameters),
 	gas_cooling_parameters(std::move(gas_cooling_parameters)),
-	agn_parameters(agn_parameters)
-{
+	agn_parameters(agn_parameters){
 	// no-op
 }
 
