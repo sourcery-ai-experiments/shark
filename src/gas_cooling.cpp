@@ -368,7 +368,7 @@ double GasCooling::cooling_rate(Subhalo &subhalo, Galaxy &galaxy, double z, doub
 
 	// we will compute the density of the hot gas with mhot_density, which for centrals is = mhot, but for satellites type1 is not.
 	auto mhot_density = mhot;
-	// if subhalo is a satellite, we include the gas mass that has been stripped as the assumption is that the RPS does not affected the gas density.
+	// if subhalo is a satellite, we include the gas mass that has been stripped as the assumption is that the RPS does not affected the gas density profile.
 	if(subhalo.subhalo_type == Subhalo::SATELLITE){
 		mhot_density += subhalo.hot_halo_gas_stripped.mass;
 	}
@@ -401,28 +401,30 @@ double GasCooling::cooling_rate(Subhalo &subhalo, Galaxy &galaxy, double z, doub
 	double Tvir   = 35.9 * std::pow(vvir,2.0); //in K.
 	double lgTvir = log10(Tvir); //in K.
 	double Rvir = 0;
-	double Mvir = 0;
 
 	if(subhalo.subhalo_type == Subhalo::CENTRAL){
 		Rvir = cosmology->comoving_to_physical_size(darkmatterhalos->halo_virial_radius(halo, z), z);//physical Mpc
-		Mvir = halo->Mvir;
 	}
 	else {
 		//If subhalo is a satellite, then adopt virial radius at infall.
 		Rvir = cosmology->comoving_to_physical_size(subhalo.rvir_infall, z);//physical Mpc
-		Mvir = subhalo.Mvir_infall;
 	}
 
 	/**
 	* Calculates the cooling Lambda function for the metallicity and temperature of this halo.
 	*/
 	double logl = cooling_lambda_interpolator.get(lgTvir, zhot); //in cgs
+								     
+	// Avoid values that are too large for hot halo cooling
+	if (logl > -23){
+		logl = -23;
+	}
 
 	/**
 	 * Calculate mean density for notional cooling profile.
 	 */
 	double nh_density  = mean_density(mhot_density, Rvir); //in units of cm^-3.
-
+	double nh_density_200crit = 200.0 * cosmology->critical_density(z) * MSOLAR_g / MPC2CM_cube / (M_Atomic_g * mu_Primordial); //in units of cm^-3.
 	double tcool = 0;
 	double tcharac = 0;
 
@@ -472,7 +474,7 @@ double GasCooling::cooling_rate(Subhalo &subhalo, Galaxy &galaxy, double z, doub
 	else {
 		//cooling radius larger than virial radius, and set cooling radius to virial radius.
 		coolingrate = mhot/tcool;
-				r_cool = Rvir;
+		r_cool = Rvir;
 	}
 
 	if(agnfeedback->parameters.model == AGNFeedbackParameters::BOWER06){
@@ -508,9 +510,12 @@ double GasCooling::cooling_rate(Subhalo &subhalo, Galaxy &galaxy, double z, doub
 		}// end if of AGN feedback model
 	}// end if of BOWER06 AGN feedback model.
 
-	else if(agnfeedback->parameters.model == AGNFeedbackParameters::CROTON16 || agnfeedback->parameters.model == AGNFeedbackParameters::LAGOS22){
+	else if(agnfeedback->parameters.model == AGNFeedbackParameters::CROTON16 || agnfeedback->parameters.model == AGNFeedbackParameters::LAGOS23){
+
 		//a pseudo cooling luminosity k*T/lambda(T,Z)
-		double Lpseudo_cool = constants::k_Boltzmann_erg * Tvir / std::pow(10.0,logl) / 1e40;
+		double Lpseudo_cool = constants::k_Boltzmann_erg * Tvir / std::pow(10.0,logl) / 1e40; //in units of 1e40 s/cm^3*gr^2.
+		double Lcool = cooling_luminosity(logl, r_cool, Rvir, mhot);
+
 		central_galaxy->smbh.macc_hh = agnfeedback->accretion_rate_hothalo_smbh(Lpseudo_cool, deltat, fhot, vvir, *central_galaxy);
 
 		//now convert mass accretion rate to comoving units.
@@ -518,14 +523,33 @@ double GasCooling::cooling_rate(Subhalo &subhalo, Galaxy &galaxy, double z, doub
 
 		//Mass heating rate from AGN in units of Msun/Gyr.
 		double mheatrate = 0;
-		if(agnfeedback->parameters.model == AGNFeedbackParameters::LAGOS22){
-			// decide whether this halo is in a quasi-hydrostatic regime or not.
-			bool hothalo = quasi_hydrostatic_halo(mhot_density, std::pow(10.0,logl), nh_density, Mvir, Tvir, Rvir, z);
+		if(agnfeedback->parameters.model == AGNFeedbackParameters::LAGOS23){
+
+			// decide whether this halo is in a quasi-hydrostatic regime or not in the case of central subhalos, otherwise just take the status from the central subhalo.
+			if(subhalo.subhalo_type == Subhalo::CENTRAL) {
+				halo->hydrostatic_eq = quasi_hydrostatic_halo(mhot_density, std::pow(10.0,logl), nh_density_200crit, halo->Mvir, Tvir, z);
+			}
+			else{
+				//In the case of the subhalo being a satellite subhalo, check if the host halo is already in hydrostatic equilibrium or if it's massive (in which case it should be in hydrostatic eq).
+				if(halo->hydrostatic_eq || halo->Mvir > 3e12){
+					halo->hydrostatic_eq = true;
+				}
+			}	
 
 			// radio mode feedback only applies in situations where there is a hot halo
-			if(hothalo){
-				mheatrate = agnfeedback->agn_mechanical_luminosity(central_galaxy->smbh) * agnfeedback->parameters.kappa_radio
-						* 1e40 / (0.5 * std::pow(vvir * KM2CM,2.0)) * MACCRETION_cgs_simu;
+			if(halo->hydrostatic_eq){
+				double Qnet = agnfeedback->parameters.kappa_jet * agnfeedback->agn_mechanical_luminosity(central_galaxy->smbh); //in units of 1e40erg/s.
+													   
+				// If this is a central subhalo, then add up any excess jet feedback from satellite galaxies and then make excess equal 0.
+				if(subhalo.subhalo_type == Subhalo::CENTRAL) {
+					Qnet += halo->excess_jetfeedback;
+					halo->excess_jetfeedback = 0;
+				}
+				// Compare the amount of power injected by AGN with the cooling luminosity
+				central_galaxy->mheat_ratio = Qnet / Lcool;
+
+ 				//heating rate will be determined by the offset in luminosity that the AGN provides
+				mheatrate = central_galaxy->mheat_ratio * coolingrate;
 			}
 		}
 		else if(agnfeedback->parameters.model == AGNFeedbackParameters::CROTON16){
@@ -535,21 +559,30 @@ double GasCooling::cooling_rate(Subhalo &subhalo, Galaxy &galaxy, double z, doub
 
 		// Calculate heating radius
 		double rheat = mheatrate/coolingrate * r_cool;
-
 		double r_ratio = rheat/r_cool;
 
-		// Track heating radius. Croton16 and Lagos22 assume that the heating radius only increases.
-		if(subhalo.cooling_subhalo_tracking.rheat < rheat){
+		// Track heating radius. Croton16 assume that the heating radius only increases, so it is saved only if it's larger than the previously recorded one.
+		if(agnfeedback->parameters.model == AGNFeedbackParameters::CROTON16){
+			subhalo.cooling_subhalo_tracking.rheat = rheat;
+		}
+		else if(subhalo.cooling_subhalo_tracking.rheat < rheat && agnfeedback->parameters.model == AGNFeedbackParameters::LAGOS23){
 			subhalo.cooling_subhalo_tracking.rheat = rheat;
 		}
 
 		r_ratio = subhalo.cooling_subhalo_tracking.rheat/r_cool;
 
 		if(r_ratio > agnfeedback->parameters.alpha_cool){
+			//if the subhalo is a satellite and the AGN feedback experienced is enough to completely switch off cooling in that satellite, save the excess jet power in the halo to be used 
+			//by the central galaxy to make work.
+			if (subhalo.subhalo_type == Subhalo::SATELLITE){
+				halo->excess_jetfeedback += (central_galaxy->mheat_ratio - 1) * Lcool; //saved in 1e40erg/s
+			}
+
 			r_ratio = 1;
 			//Redefine mheatrate and macc_h accordingly.
 			mheatrate = r_ratio * coolingrate;
 			central_galaxy->smbh.macc_hh = agnfeedback->accretion_rate_hothalo_smbh_limit(mheatrate, vvir, central_galaxy->smbh);
+
 		}
 
 		//modify cooling rate according to heating rate.
@@ -674,6 +707,7 @@ double GasCooling::mean_density(double mhot, double rvir){
 	return mhot*MSOLAR_g/(SPI * std::pow(rvir * MPC2CM,3.0)) / (M_Atomic_g * mu_Primordial); //in units of cm^-3.
 }
 
+
 double GasCooling::cooling_radius(double mhot, double rvir, double tcharac, double logl, double Tvir){
 
 	using namespace constants;
@@ -732,7 +766,7 @@ double GasCooling::cooling_luminosity(double logl, double rcool, double rvir, do
 	}
 }
 
-bool GasCooling::quasi_hydrostatic_halo(double mhot, double lambda, double nh_density, double mass, double Tvir, double rvir, double redshift){
+bool GasCooling::quasi_hydrostatic_halo(double mhot, double lambda, double nh_density, double mass, double Tvir, double redshift){
 		/**
 		 *  This function uses the model of Correa et al. (2018) to determine if a hot halo has formed or not. Relevant equations from that paper are Eq. 16 and 17.
 		 **/
@@ -743,14 +777,11 @@ bool GasCooling::quasi_hydrostatic_halo(double mhot, double lambda, double nh_de
 		auto m200norm = m200 / 1e12;
 		auto log10m200norm = std::log10(m200norm);
 
-		// cooling rate in cgs.
-		double gamma_cool = mhot * MSOLAR_g * lambda * nh_density / (M_Atomic_g * mu_Primordial * 0.1);
-
-		double omega_term = std::sqrt(cosmology->parameters.OmegaM * std::pow(redshift + 1.0, 3.0) + cosmology->parameters.OmegaL);
-
 		// growth rate of halo in Msun/Gyr from Dekel et al. (2009).
 		double mdot = 0.47 * std::pow(m200norm, 0.15) * std::pow(0.333 * (redshift + 1.0), 2.25) * m200;
-		// 71.6 * GIGA * m200norm * (cosmology->parameters.Hubble_h/0.7)  * (1 + redshift) * omega_term; //Correa et al. (2015)
+
+		//double omega_term = std::sqrt(cosmology->parameters.OmegaM * std::pow(redshift + 1.0, 3.0) + cosmology->parameters.OmegaL);
+		//double mdot = 71.6 * GIGA * m200norm * (cosmology->parameters.Hubble_h/0.7)  * (1 + redshift) * omega_term; //Correa et al. (2015)
 
 		// define fractions of hot gas (Equations 10 and 18 in Correa et al. 2018).
                 double f_hot = std::pow(10.0, -0.8 + 0.5 * log10m200norm - 0.05 * std::pow(log10m200norm, 2.0));
@@ -759,9 +790,14 @@ bool GasCooling::quasi_hydrostatic_halo(double mhot, double lambda, double nh_de
 		// heating rate in cgs.
 		double gamma_heat = 1.5 * k_Boltzmann_erg * Tvir / (M_Atomic_g * mu_Primordial) * cosmology->universal_baryon_fraction() * mdot / MACCRETION_cgs_simu * (0.666 * f_hot + f_acchot);
 
+		// cooling rate in cgs.
+		double gamma_cool = f_hot * m200 * MSOLAR_g * cosmology->universal_baryon_fraction() * lambda * nh_density / (M_Atomic_g * mu_Primordial); 
+		//mhot * MSOLAR_g * lambda * nh_density / (M_Atomic_g * mu_Primordial);
+
 
 		double ratio = gamma_cool/gamma_heat;
-		if(ratio <  agnfeedback->parameters.hot_halo_threshold){
+
+		if(ratio <  agnfeedback->parameters.hot_halo_threshold || m200 > 3e12){
 			return true;
 		}
 		else{

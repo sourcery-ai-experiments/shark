@@ -43,8 +43,8 @@ GyrToYr = 1e9
 # Binning configuration
 mlow = 5
 mupp = 14
-dm = 0.2
-mbins = np.arange(mlow, mupp, dm)
+dm = 0.125
+mbins = np.arange(mlow,mupp,dm)
 xmf = mbins + dm/2.0
 
 mlow2 = 5
@@ -74,7 +74,6 @@ zeros3 = lambda: np.zeros(shape=(1, len(mbins)))
 zeros4 = lambda: np.empty(shape=(1), dtype=np.bool_)
 zeros5 = lambda: np.zeros(shape=(1, 4, len(ssfrbins)))
 zeros6 = lambda: np.zeros(shape = (1, 3, len(xsfr)))
-
 
 class Constraint(object):
     """Base classes for constraint objects"""
@@ -107,7 +106,9 @@ class Constraint(object):
                 'mstars_metals_disk', 'mstars_metals_bulge', 'type',
                 'mvir_hosthalo', 'rstar_bulge', 'mstars_burst_mergers', 
                 'mstars_burst_diskinstabilities', 'mstars_bulge_mergers_assembly', 
-                'mstars_bulge_diskins_assembly')
+                'mstars_bulge_diskins_assembly', 'specific_angular_momentum_disk_gas_atom',
+                'vmax_subhalo', 'rgas_disk')
+
         }
 
         for index, z in enumerate(self.z):
@@ -115,7 +116,7 @@ class Constraint(object):
             h0 = hdf5_data[0]
             smf.prepare_data(hdf5_data, index, hist_smf, zeros3(), zeros3(),
                              zeros3(), zeros3(), hist_HImf, zeros3(), zeros3(),
-                             zeros3(), zeros3(), zeros3(), zeros1(), zeros1(),
+                             zeros3(), zeros3(), zeros3(), zeros3(), zeros1(), zeros1(),
                              zeros1(), zeros1(), zeros1(), zeros1(), zeros1(),
                              zeros1(), zeros1(), zeros1(), zeros1(), zeros1(),
                              zeros1(), zeros4(), zeros4(), zeros2(), zeros5(),
@@ -133,7 +134,7 @@ class Constraint(object):
         hist_HImf_err[ind] = abs(np.log10(hist_HImf[ind]) - np.log10(hist_HImf_err[ind]))
         hist_HImf[ind] = np.log10(hist_HImf[ind])
 
-	#### Read CSFR model data ####
+   	    #### Read CSFR model data ####
         fields = {'global': ('redshifts', 'm_hi', 'm_h2', 'mcold', 'mcold_metals',
                          'mhot_halo', 'mejected_halo', 'mbar_lost', 'mbar_created', 'mstars', 
                          'mstars_bursts_mergers', 'mstars_bursts_diskinstabilities',
@@ -325,24 +326,25 @@ class SMF(Constraint):
         return xmf[ind], y[ind], yerr[ind]
 
 class SMF_z0(SMF):
-    """The Bernardi SMF constraint at z=0"""
+    """The SMF constraint at z=0"""
 
     z = [0]
 
     def get_obs_x_y_err(self, h0):
 
-        lm, p, dp = self.load_observation('mf/SMF/GAMAIV_Driver22.dat', cols=[0,1,2])
+        #lm, p, dp = self.load_observation('mf/SMF/GAMAIV_Driver22.dat', cols=[0,1,2])
+        #hobs = 0.7
+        #x_obs = lm + 2.0 * np.log10(hobs/h0)
+        #y_obs = p - 3.0 * np.log10(hobs/h0)
+        #y_dn = dp
+        #y_up = dp
+
+        lm, p, dpdn, dpup = self.load_observation('mf/SMF/SMF_Li2009.dat', cols=[0,1,2,3])
         hobs = 0.7
-        x_obs = lm + 2.0 * np.log10(hobs/h0)
-        y_obs = p - 3.0 * np.log10(hobs/h0)
-        y_dn = dp
-        y_up = dp
-	
-        #lm, p, dpdn, dpup = self.load_observation('mf/SMF/SMF_Li2009.dat', cols=[0,1,2,3])
-        #x_obs = lm - 2.0 * np.log10(h0)
-        #y_obs = p + 3.0 * np.log10(h0)
-        #y_dn = dpdn
-        #y_up = dpup
+        x_obs = lm - 2.0 * np.log10(hobs) + 2.0 * np.log10(hobs/h0)
+        y_obs = p + 3.0 * np.log10(hobs) - 3.0 * np.log10(hobs/h0)
+        y_dn = dpdn
+        y_up = dpup
 
         return x_obs, y_obs, y_dn, y_up
 
@@ -354,22 +356,30 @@ class SMF_z0p5(SMF):
     def get_obs_x_y_err(self, h0):
 
         # Wright et al. (2018, several reshifts). Assumes Chabrier IMF.
-        zD17, lmD17, pD17, dp_dn_D17, dp_up_D17, dp_cv = self.load_observation('mf/SMF/Wright18_CombinedSMF.dat', cols=[0,1,2,3,4,5])
-        hobs = 0.7
-        binobs = 0.25
-        pD17 = pD17 + 2.0 * np.log10(hobs/h0) - np.log10(binobs)
-        lmD17 = lmD17 - 3.0 * np.log10(hobs/h0) - np.log10(binobs)
-        in_redshift = np.where(zD17 == 0.5)
+        #zD17, lmD17, pD17, dp_dn_D17, dp_up_D17, dp_cv = self.load_observation('mf/SMF/Wright18_CombinedSMF.dat', cols=[0,1,2,3,4,5])
+        #hobs = 0.7
+        #binobs = 0.25
+        #pD17 = pD17 + 2.0 * np.log10(hobs/h0) - np.log10(binobs)
+        #lmD17 = lmD17 - 3.0 * np.log10(hobs/h0) - np.log10(binobs)
+        #in_redshift = np.where(zD17 == 0.5)
 
-        x_obs = lmD17[in_redshift]
-        y_obs = pD17[in_redshift]
-        y_dn = dp_dn_D17[in_redshift]
-        y_up = dp_up_D17[in_redshift]
-        cv = np.log10(1 + dp_cv[in_redshift]) 
+        #x_obs = lmD17[in_redshift]
+        #y_obs = pD17[in_redshift]
+        #y_dn = dp_dn_D17[in_redshift]
+        #y_up = dp_up_D17[in_redshift]
+        #cv = np.log10(1 + dp_cv[in_redshift]) 
 
         # combine cosmic variance and model variance in quadrature
-        y_dn = np.sqrt(y_dn**2 + cv**2)
-        y_up = np.sqrt(y_up**2 + cv**2)
+        #y_dn = np.sqrt(y_dn**2 + cv**2)
+        #y_up = np.sqrt(y_up**2 + cv**2)
+
+        #SMF from Weaver et al. (2022)
+        lm, pD, dn, du = self.load_observation('mf/SMF/COSMOS2020/SMF_Farmer_v2.1_0.5z0.8_total.txt', cols = [0,2,3,4])
+        hobs = 0.7
+        y_obs = np.log10(pD) +  3.0 * np.log10(hobs/h0)
+        y_dn = np.log10(pD) - np.log10(dn)
+        y_up = np.log10(du) - np.log10(pD)
+        x_obs = lm -  2.0 * np.log10(hobs/h0)
 
         return x_obs, y_obs, y_dn, y_up
 
@@ -381,31 +391,57 @@ class SMF_z1(SMF):
     def get_obs_x_y_err(self, h0):
 
         # Wright et al. (2018, several reshifts). Assumes Chabrier IMF.
-        zD17, lmD17, pD17, dp_dn_D17, dp_up_D17, dp_cv = self.load_observation('mf/SMF/Wright18_CombinedSMF.dat', cols=[0,1,2,3,4,5])
+
+        #zD17, lmD17, pD17, dp_dn_D17, dp_up_D17, dp_cv = self.load_observation('mf/SMF/Wright18_CombinedSMF.dat', cols=[0,1,2,3,4,5])
+        #hobs = 0.7
+        #binobs = 0.25
+        #pD17 = pD17 + 2.0 * np.log10(hobs/h0) - np.log10(binobs)
+        #lmD17 = lmD17 - 3.0 * np.log10(hobs/h0) - np.log10(binobs)
+        #in_redshift = np.where(zD17 == 1)
+        #x_obs = lmD17[in_redshift]
+        #y_obs = pD17[in_redshift]
+        #y_dn = dp_dn_D17[in_redshift]
+        #y_up = dp_up_D17[in_redshift]
+        #cv = np.log10(1 + dp_cv[in_redshift])
+
+        ## combine cosmic variance and model variance in quadrature
+        #y_dn = np.sqrt(y_dn**2 + cv**2)
+        #y_up = np.sqrt(y_up**2 + cv**2)
+
+        ## take first set of values
+        #ind = np.arange(0,12)
+        #x_obs = x_obs[ind]
+        #y_obs = y_obs[ind]
+        #y_dn = y_dn[ind]
+        #y_up = y_up[ind]
+
+        #SMF from Weaver et al. (2022)
+        lm, pD, dn, du = self.load_observation('mf/SMF/COSMOS2020/SMF_Farmer_v2.1_0.8z1.1_total.txt', cols = [0,2,3,4])
         hobs = 0.7
-        binobs = 0.25
-        pD17 = pD17 + 2.0 * np.log10(hobs/h0) - np.log10(binobs)
-        lmD17 = lmD17 - 3.0 * np.log10(hobs/h0) - np.log10(binobs)
-        in_redshift = np.where(zD17 == 1)
-        x_obs = lmD17[in_redshift]
-        y_obs = pD17[in_redshift]
-        y_dn = dp_dn_D17[in_redshift]
-        y_up = dp_up_D17[in_redshift]
-        cv = np.log10(1 + dp_cv[in_redshift])
-
-        # combine cosmic variance and model variance in quadrature
-        y_dn = np.sqrt(y_dn**2 + cv**2)
-        y_up = np.sqrt(y_up**2 + cv**2)
-
-        # take first set of values
-        ind = np.arange(0,12)
-        x_obs = x_obs[ind]
-        y_obs = y_obs[ind]
-        y_dn = y_dn[ind]
-        y_up = y_up[ind]
+        y_obs = np.log10(pD) +  3.0 * np.log10(hobs/h0)
+        y_dn = np.log10(pD) - np.log10(dn)
+        y_up = np.log10(du) - np.log10(pD)
+        x_obs = lm -  2.0 * np.log10(hobs/h0)
 
         return x_obs, y_obs, y_dn, y_up
  
+class SMF_z2(SMF):
+    """The SMF constraint at z=2"""
+
+    z = [2]
+
+    def get_obs_x_y_err(self, h0):
+
+        #SMF from Weaver et al. (2022)
+        lm, pD, dn, du = self.load_observation('mf/SMF/COSMOS2020/SMF_Farmer_v2.1_2.0z2.5_total.txt', cols = [0,2,3,4])
+        hobs = 0.7
+        y_obs = np.log10(pD) +  3.0 * np.log10(hobs/h0)
+        y_dn = np.log10(pD) - np.log10(dn)
+        y_up = np.log10(du) - np.log10(pD)
+        x_obs = lm -  2.0 * np.log10(hobs/h0)
+
+        return x_obs, y_obs, y_dn, y_up
+
 
 class CSFR(Constraint):
     """The Cosmic Star Formation Rate constraint"""

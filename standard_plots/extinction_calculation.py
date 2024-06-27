@@ -46,6 +46,7 @@ m14 = False
 rr14 = True
 constdust = False
 rr14xcoc = False
+random_perturbation = True
 
 #read EAGLE tables
 sdust_eaglet, taumed_eagle, taulow_eagle, tauhigh_eagle = common.load_observation('../data', 'Models/EAGLE/Tau5500-Trayford-EAGLE.dat', [0,1,2,3])
@@ -132,7 +133,8 @@ def tau_diff (md, rd, hd, h0):
         thigh= abs( (m_hig[0,i] * sigma[selecinrage] + m_hig[1,i]) - tau[selecinrage])
         var_gauss = (tlow + thigh) * 0.5
         pert = np.random.randn(len(var_gauss)) * np.sqrt(var_gauss)
-        tau[selecinrage] = tau[selecinrage] + pert
+        if random_perturbation == True:
+           tau[selecinrage] = tau[selecinrage] + pert
 
     # cap it to maximum and minimum values in EAGLE
     tau = np.clip(tau, 1e-6, 5) 
@@ -192,7 +194,8 @@ def slope_diff (md, rd, hd, h0):
         thigh= abs((s_hig[0,i] * sigma[selecinrage] + s_hig[1,i]) - m[selecinrage])
         var_gauss = (tlow + thigh) * 0.5
         pert = np.random.randn(len(var_gauss)) * np.sqrt(var_gauss)
-        m[selecinrage] = m[selecinrage] + pert
+        if random_perturbation == True:
+           m[selecinrage] = m[selecinrage] + pert
 
     # cap it to maximum and minimum values in EAGLE
     m = np.clip(m, -3, -0.001)
@@ -254,19 +257,30 @@ def main(model_dir, output_dir, redshift_table, subvols, obs_dir):
     #zlist = np.arange(2,10,0.25)
     #zlist = (0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95, 0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 0, 0.25, 0.5, 1, 2, 3, 4, 6, 8, 9, 10)
 
-    zlist = [0, 0.25, 0.38, 0.49, 0.76, 1.00, 1.245, 1.51, 1.77, 2.00, 3.01, 3.95, 5.0, 6.0, 7.0, 8.0, 9.0, 10]
-    #[0,0.194739, 0.254144, 0.359789, 0.450678, 0.8, 0.849027, 0.9, 1.20911, 1.28174, 1.39519, 1.59696, 2.00392, 2.47464723643932, 2.76734390952347, 3.01916, 3.21899984389701, 3.50099697082904, 3.7248038025221, 3.95972, 4.465197621546, 4.73693842543988, 5.02220991014863, 5.52950356184419, 5.96593, 6.55269895697227, 7.05756323172746, 7.45816170313544, 8.02352, 8.94312532315157, 9.95655]
-    #[0.016306640039433, 0.066839636933135, 0.084236502339783, 0.119886040396529, 0.138147164704691, 0.175568857770275, 0.214221447279112, 0.23402097095238, 0.274594901875312, 0.316503156974571]
+    zlist_given = False
+    if(zlist_given):
+        zlist = [0.381963715160695, 1.77053590476006]
+    else:
+        snap_list = [96, 94, 91, 86, 83, 81]
+        #[126, 122, 117, 109, 106, 103, 96, 94, 91, 86, 83, 81]
+        #[269, 224, 213, 205, 188, 174, 153, 140, 129, 120, 111, 104, 91, 82, 75, 69, 63, 58]
+        #[199, 185, 179, 174, 164, 156, 149, 142, 136, 131, 113, 100, 88, 79, 70, 63, 57, 51]
 
     plt = common.load_matplotlib()
     fields = {'galaxies': ('type', 'rgas_disk', 'rgas_bulge', 'matom_disk', 'mmol_disk', 'mgas_disk',
                            'matom_bulge', 'mmol_bulge', 'mgas_bulge', 'mgas_metals_disk', 
                            'mgas_metals_bulge', 'mstars_disk', 'mstars_bulge','sfr_disk','sfr_burst','id_galaxy')}
 
-    for index, snapshot in enumerate(redshift_table[zlist]):
-        for subv in subvols:
-            hdf5_data = common.read_data(model_dir, snapshot, fields, [subv])
-            prepare_data(hdf5_data, index, model_dir, snapshot, subv)
+    if(zlist_given): 
+       for index, snapshot in enumerate(redshift_table[zlist]):
+           for subv in subvols:
+               hdf5_data = common.read_data(model_dir, snapshot, fields, [subv])
+               prepare_data(hdf5_data, index, model_dir, snapshot, subv)
+    else:
+        for index, snapshot in enumerate(snap_list):
+            for subv in subvols:
+               hdf5_data = common.read_data(model_dir, snapshot, fields, [subv])
+               prepare_data(hdf5_data, index, model_dir, snapshot, subv)
 
 if __name__ == '__main__':
     main(*common.parse_args())

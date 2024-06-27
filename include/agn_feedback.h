@@ -56,11 +56,11 @@ public:
 	double kappa_agn = 0;
 	double nu_smbh = 0.1;
 
-	bool qso_feedback = false;
-	double epsilon_qso = 0;
+	bool wind_feedback = false;
+	double epsilon_wind = 0;
 
 	// Parameters relevant to Lagos22 model
-	float kappa_radio = 1;
+	float kappa_jet = 1;
 	float eta_superedd = 4;
 	float hot_halo_threshold = 1;
 	float alpha_adaf = 0.1;
@@ -76,7 +76,7 @@ public:
 	enum AGNFeedbackModel {
 		CROTON16 = 0,
 		BOWER06,
-		LAGOS22
+		LAGOS23
 	};
 
 	enum SpinModel{

@@ -94,6 +94,9 @@ namespace constants {
 	/** Number of centimetres in a Mpc (Particle Data Book 2002, page 6) */
 	constexpr double MPC2CM = MPC2M * HECTO;
 
+	/** Number of centimetres in a Mpc (Particle Data Book 2002, page 6) cubed*/
+	constexpr double MPC2CM_cube = pow<3>(MPC2CM);
+
 	/** Number of cm in a km */
 	constexpr double KM2CM = 1e5;
 

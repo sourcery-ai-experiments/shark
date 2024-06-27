@@ -32,7 +32,7 @@
 
 #include <boost/filesystem.hpp>
 
-#include "hdf5/writer.h"
+#include "hdf5/io/writer.h"
 #include "config.h"
 #include "cosmology.h"
 #include "exceptions.h"
@@ -50,12 +50,13 @@
 
 namespace shark {
 
-GalaxyWriter::GalaxyWriter(ExecutionParameters exec_params, CosmologicalParameters cosmo_params,  CosmologyPtr cosmology, DarkMatterHalosPtr darkmatterhalo, SimulationParameters sim_params):
+GalaxyWriter::GalaxyWriter(ExecutionParameters exec_params, CosmologicalParameters cosmo_params,  CosmologyPtr cosmology, DarkMatterHalosPtr darkmatterhalo, SimulationParameters sim_params, AGNFeedbackParameters agn_params):
 	exec_params(std::move(exec_params)),
 	cosmo_params(std::move(cosmo_params)),
 	cosmology(std::move(cosmology)),
 	darkmatterhalo(std::move(darkmatterhalo)),
-	sim_params(std::move(sim_params))
+	sim_params(std::move(sim_params)),
+	agn_params(std::move(agn_params))
 {
 	//no-opt
 }
@@ -89,7 +90,9 @@ void HDF5GalaxyWriter::write(int snapshot, const std::vector<HaloPtr> &halos, To
 	write_header(file, snapshot);
 	write_galaxies(file, snapshot, halos, molgas_per_gal);
 	write_global_properties(file, snapshot, AllBaryons);
-	write_histories(snapshot, halos);
+	write_sf_histories(snapshot, halos);
+	write_bh_histories(snapshot, halos);
+
 }
 
 void HDF5GalaxyWriter::write_header(hdf5::Writer &file, int snapshot){
@@ -224,6 +227,7 @@ void HDF5GalaxyWriter::write_galaxies(hdf5::Writer &file, int snapshot, const st
 	vector<float> matom_bulge;
 
 	vector<float> mBH;
+	vector<float> mBH_assembly;
 	vector<float> mBH_acc_hh;
 	vector<float> mBH_acc_sb;
 	vector<float> bh_spin;
@@ -267,6 +271,7 @@ void HDF5GalaxyWriter::write_galaxies(hdf5::Writer &file, int snapshot, const st
 	vector<float> mlost_metals;
 
 	vector<float> cooling_rate;
+	vector<int> on_hydrostatic_eq;
 
 	vector<float> mvir_hosthalo;
 	vector<float> mvir_subhalo;
@@ -305,6 +310,7 @@ void HDF5GalaxyWriter::write_galaxies(hdf5::Writer &file, int snapshot, const st
 	vector<float> L_z_subhalo;
 
 	vector<int> type;
+
 	vector<Halo::id_t> id_halo;
 	vector<Halo::id_t> id_halo_tree;
 	vector<Subhalo::id_t> id_subhalo;
@@ -369,6 +375,13 @@ void HDF5GalaxyWriter::write_galaxies(hdf5::Writer &file, int snapshot, const st
 				//ignore this galaxy if it will appear for the first time in the coming snapshot.
 				if(galaxy.birth_snapshot == snapshot) continue;
 
+				if(halo->hydrostatic_eq){
+					on_hydrostatic_eq.push_back(1);
+				}
+				else{
+					on_hydrostatic_eq.push_back(0);
+				}
+
 
 				id_halo_tree.push_back(halo->id);
 				id_subhalo_tree.push_back(subhalo->id);
@@ -422,12 +435,12 @@ void HDF5GalaxyWriter::write_galaxies(hdf5::Writer &file, int snapshot, const st
 
 				// Black hole properties.
 				mBH.push_back(galaxy.smbh.mass);
+				mBH_assembly.push_back(galaxy.smbh.massembly);
 				mBH_acc_hh.push_back(galaxy.smbh.macc_hh);
 				mBH_acc_sb.push_back(galaxy.smbh.macc_sb);
 				bh_spin.push_back(galaxy.smbh.spin);
 
 				// Sizes and specific angular momentum of disks and bulges.
-
 				rdisk_gas.push_back(galaxy.disk_gas.rscale);
 				rbulge_gas.push_back(galaxy.bulge_gas.rscale);
 				r_stripped_ism.push_back(galaxy.r_rps);
@@ -636,6 +649,7 @@ void HDF5GalaxyWriter::write_galaxies(hdf5::Writer &file, int snapshot, const st
 	REPORT(matom_disk);
 	REPORT(matom_bulge);
 	REPORT(mBH);
+	REPORT(mBH_assembly);
 	REPORT(mBH_acc_hh);
 	REPORT(mBH_acc_sb);
 	REPORT(bh_spin);
@@ -664,6 +678,7 @@ void HDF5GalaxyWriter::write_galaxies(hdf5::Writer &file, int snapshot, const st
 	REPORT(stellar_halo_metals);
 	REPORT(mean_stellar_mass_galaxies_ihsc);
 	REPORT(cooling_rate);
+	REPORT(on_hydrostatic_eq);
 	REPORT(mhot_stripped);
 	REPORT(mhot_stripped_metals);
 	REPORT(mvir_hosthalo);
@@ -751,6 +766,7 @@ void HDF5GalaxyWriter::write_galaxies(hdf5::Writer &file, int snapshot, const st
 	file.write_dataset("subhalo/l_z", L_z_subhalo, comment);
 
 	//Write galaxy properties.
+
 	comment = "stellar mass in the disk [Msun/h]";
 	file.write_dataset("galaxies/mstars_disk", mstars_disk, comment);
 
@@ -841,6 +857,9 @@ void HDF5GalaxyWriter::write_galaxies(hdf5::Writer &file, int snapshot, const st
 	comment = "black hole mass [Msun/h]";
 	file.write_dataset("galaxies/m_bh", mBH, comment);
 
+	comment = "black hole mass that comes from assembly (BH-BH mergers) [Msun/h]";
+	file.write_dataset("galaxies/m_bh_assembly", mBH_assembly, comment);
+
 	comment = "accretion rate onto the black hole during the hot halo mode [Msun/Gyr/h]";
 	file.write_dataset("galaxies/bh_accretion_rate_hh", mBH_acc_hh, comment);
 
@@ -915,6 +934,9 @@ void HDF5GalaxyWriter::write_galaxies(hdf5::Writer &file, int snapshot, const st
 
 	comment = "cooling rate of the hot halo component [Msun/Gyr/h].";
 	file.write_dataset("galaxies/cooling_rate", cooling_rate, comment);
+
+	comment = "is halo on quasi hydrostatic equilibrium (=1 for true, =0 for false).";
+	file.write_dataset("galaxies/on_hydrostatic_eq", on_hydrostatic_eq, comment);
 
 	comment = "gas mass that has been stripped out of this subhalo due to ram pressure stripping [Msun/h].";
 	file.write_dataset("galaxies/mhot_stripped", mhot_stripped, comment);
@@ -1110,7 +1132,7 @@ void HDF5GalaxyWriter::write_global_properties (hdf5::Writer &file, int snapshot
 	file.write_dataset("global/mbar_lost", baryons_ever_lost, comment);
 }
 
-void HDF5GalaxyWriter::write_histories (int snapshot, const std::vector<HaloPtr> &halos){
+void HDF5GalaxyWriter::write_sf_histories (int snapshot, const std::vector<HaloPtr> &halos){
 
 
 	using std::string;
@@ -1120,6 +1142,8 @@ void HDF5GalaxyWriter::write_histories (int snapshot, const std::vector<HaloPtr>
 
 	if(exec_params.output_sf_histories){
 		if(std::find(exec_params.snapshots_sf_histories.begin(), exec_params.snapshots_sf_histories.end(), snapshot) != exec_params.snapshots_sf_histories.end()){
+
+			Timer sfh_writer_timer;
 			hdf5::Writer file_sfh(get_output_directory(snapshot) + "/star_formation_histories.hdf5");
 
 			//Create the vectors that will save the information of the galaxies
@@ -1284,6 +1308,135 @@ void HDF5GalaxyWriter::write_histories (int snapshot, const std::vector<HaloPtr>
 
 			comment = "Time interval covered between snapshots [Gyr]";
 			file_sfh.write_dataset("delta_t", delta_t, comment);
+
+			LOG(info) << "Galaxies SFH data written in " << sfh_writer_timer;
+		}
+
+	}
+}
+
+void HDF5GalaxyWriter::write_bh_histories (int snapshot, const std::vector<HaloPtr> &halos){
+
+
+	using std::string;
+	using std::vector;
+
+	string comment;
+
+	if(exec_params.output_bh_histories){
+		if(std::find(exec_params.snapshots_bh_histories.begin(), exec_params.snapshots_bh_histories.end(), snapshot) != exec_params.snapshots_bh_histories.end()){
+			hdf5::Writer file_bh(get_output_directory(snapshot) + "/black_hole_histories.hdf5");
+
+			//Create the vectors that will save the information of the galaxies
+			vector<vector<float>> bh_mass;
+			vector<vector<float>> bh_spin;
+			vector<vector<float>> bh_assembly;
+
+			vector<vector<float>> macc_hh;
+			vector<vector<float>> macc_sb;
+
+			vector<Galaxy::id_t> id_galaxy;
+
+			float defl_value = 0;
+
+			for (auto &halo: halos){
+				for (auto &subhalo: halo->all_subhalos()){
+					for (auto &galaxy: subhalo->galaxies){
+						//ignore this galaxy if it will appear for the first time in the coming snapshot.
+						if(galaxy.birth_snapshot == snapshot) continue;
+
+						vector<float> bh_mass_gal;
+						vector<float> bh_spin_gal;
+						vector<float> bh_assembly_gal;
+						vector<float> macc_hh_gal;
+						vector<float> macc_sb_gal;
+
+						for(int s=sim_params.min_snapshot+1; s <= snapshot; s++) {
+
+							auto it = std::find_if(galaxy.bh_history.begin(), galaxy.bh_history.end(), [s](const BHHistoryItem &hitem) {
+								//information in snapshot corresponds to the end of it, so effectively, when writing, we need to
+								//compare to s-1.
+								return hitem.snapshot == s-1;
+							});
+
+							if (it == galaxy.bh_history.end()) {
+								bh_mass_gal.push_back(defl_value);
+								bh_spin_gal.push_back(defl_value);
+								bh_assembly_gal.push_back(defl_value);
+
+								macc_hh_gal.push_back(defl_value);
+								macc_sb_gal.push_back(defl_value);
+							}
+							else {
+								auto item = *it;
+								// assign disk properties
+								macc_hh_gal.push_back(item.macc_hh/constants::GIGA);
+								macc_sb_gal.push_back(item.macc_sb/constants::GIGA);
+								bh_mass_gal.push_back(item.mbh);
+								bh_spin_gal.push_back(item.spin);
+								bh_assembly_gal.push_back(item.massembly);	
+							}
+						}
+
+						// save galaxies only if they have a bh mass >seed BH by the output snapshot.
+						if(galaxy.smbh.mass > agn_params.mseed){
+							macc_hh.emplace_back(std::move(macc_hh_gal));
+							macc_sb.emplace_back(std::move(macc_sb_gal));
+
+							bh_mass.emplace_back(std::move(bh_mass_gal));
+							bh_spin.emplace_back(std::move(bh_spin_gal));
+							bh_assembly.emplace_back(std::move(bh_assembly_gal));
+
+							id_galaxy.push_back(galaxy.id);
+						}
+					}
+				}
+			}
+
+			vector<float> redshifts;
+			vector<float> age_mean;
+			vector<float> delta_t;
+
+			double age_uni = std::abs(cosmology->convert_redshift_to_age(0));
+			for (int i=sim_params.min_snapshot+1; i <= snapshot; i++){
+				redshifts.push_back(sim_params.redshifts[i]);
+				double delta = std::abs(cosmology->convert_redshift_to_age(sim_params.redshifts[i]) - cosmology->convert_redshift_to_age(sim_params.redshifts[i-1]));
+				double age = age_uni - 0.5 * (std::abs(cosmology->convert_redshift_to_age(sim_params.redshifts[i]) + cosmology->convert_redshift_to_age(sim_params.redshifts[i-1])));
+				delta_t.push_back(delta);
+				age_mean.push_back(age);
+			}
+
+			//Write header
+			write_header(file_bh, snapshot);
+
+			comment = "galaxy ID. Unique to this galaxy throughout time. If this galaxy never mergers onto a central, then its ID is always the same.";
+			file_bh.write_dataset("galaxies/id_galaxy", id_galaxy, comment);
+
+			//Write accreion rates
+			comment = "Black hole accretion rate due to hot halo cooling [Msun/yr/h].";
+			file_bh.write_dataset("galaxies/bh_accretion_rate_hh_history", macc_hh, comment);
+
+			comment = "Black hole accretion rate due to starbursts [Msun/yr/h].";
+			file_bh.write_dataset("galaxies/bh_accretion_rate_sb_history", macc_sb, comment);
+
+			//Write masses and spin
+			comment = "Black hole mass history (cumulative) [Msun/h].";
+                        file_bh.write_dataset("galaxies/m_bh_history", bh_mass, comment);
+
+			comment = "Black hole mass history coming from BH-BH mergers (cumulative) [Msun/h].";
+                        file_bh.write_dataset("galaxies/m_bh_assembly_history", bh_assembly, comment);
+
+			comment = "Black hole spin history [dimensionless].";
+                        file_bh.write_dataset("galaxies/bh_spin", bh_spin, comment);
+
+			comment = "Redshifts of the history outputs";
+			file_bh.write_dataset("redshifts", redshifts, comment);
+
+			comment = "Look back time to mean time between snapshots [Gyr]";
+			file_bh.write_dataset("lbt_mean", age_mean, comment);
+
+			comment = "Time interval covered between snapshots [Gyr]";
+			file_bh.write_dataset("delta_t", delta_t, comment);
 
 		}
 

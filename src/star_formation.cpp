@@ -555,14 +555,14 @@ double StarFormation::molecular_hydrogen(double mcold, double mstar, double rgas
 	}
 
 	// Avoid negative values.
-	if(result <0){
+	if(result < 0){
 		result = 0.0;
 	}
 
 	result = cosmology->physical_to_comoving_mass(result);
 
 	//Avoid AM calculation in the case of starbursts.
-	if(!bulge && jcalc){
+	if(!bulge && jcalc && result > 0){
 		// Check whether user wishes to calculate angular momentum transfer from gas to stars.
 		if(parameters.angular_momentum_transfer){
 
@@ -614,7 +614,7 @@ double StarFormation::molecular_hydrogen(double mcold, double mstar, double rgas
 		}
 	}
 	else{
-		//In the case of bulges or the case where we do not need to calculate j (jcalc == false).
+		//In the case of bulges or the case where we do not need to calculate j (jcalc == false) or the case where mmol == 0.
 		jmol = 0;
 	}
 
@@ -678,8 +678,9 @@ StarFormation::molecular_gas StarFormation::get_molecular_gas(const Galaxy &gala
 		}
 	}
 	if (galaxy.bulge_gas.mass > 0) {
+		double dummy_jmol;
 		zgas = galaxy.bulge_gas.mass_metals / galaxy.bulge_gas.mass;
-		m_mol_b = molecular_hydrogen(galaxy.bulge_gas.mass,galaxy.bulge_stars.mass,galaxy.bulge_gas.rscale, galaxy.bulge_stars.rscale, zgas, z, j_mol, jgas, vgal, true, jcalc);
+		m_mol_b = molecular_hydrogen(galaxy.bulge_gas.mass,galaxy.bulge_stars.mass,galaxy.bulge_gas.rscale, galaxy.bulge_stars.rscale, zgas, z, dummy_jmol, jgas, vgal, true, jcalc);
 		m_atom_b = galaxy.bulge_gas.mass - m_mol_b;
 	}
 

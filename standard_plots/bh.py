@@ -27,7 +27,7 @@ import common
 import utilities_statistics as us
 
 # Initialize arguments
-zlist = (0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 3, 4, 6, 10)
+zlist = (0,  0.5,  1, 1.5,  2, 3, 4, 6)
 
 ##################################
 #Constants
@@ -37,7 +37,7 @@ G        = 4.299e-9 #Gravity constant in units of (km/s)^2 * Mpc/Msun
 
 mlow = 4.5
 mupp = 12.5
-dm = 0.2
+dm = 0.25
 mbins = np.arange(mlow,mupp,dm)
 xmf = mbins + dm/2.0
 
@@ -52,14 +52,29 @@ def prepare_data(hdf5_data, index, spinbh, spinmdot, mdotmbh, mdotmbh_hh, BHSFR,
 
     if(read_spin == True):
        (h0, _, spin, mbh, mdot_hh, mdot_sb, sfr_disk, sfr_burst, mdisk, mbulge, typeg) = hdf5_data
+       ind = np.where((np.isnan(spin) == True) | (np.isinf(spin) == True))
+       if (len(spin[ind]) > 0):
+         print("Number of galaxies with a spin of NaN:", len(spin[ind]))
+       else:
+         print("All galaxies have well defined BH spins")
+
     else:
        (h0, _, mbh, mdot_hh, mdot_sb, sfr_disk, sfr_burst, mdisk, mbulge, typeg) = hdf5_data
 
     print(np.log10(max(mbh)/h0))
-    bin_it   = functools.partial(us.wmedians, xbins=xmf)
+    ind = np.where(mbh/h0 > 1e8)
+    print("Number of galaxies with BH mass > 1e8Msun:", len(mbh[ind]), " at redshift", zlist[index])
+
+    bin_it   = functools.partial(us.wmedians, xbins=xmf, nmin=5)
     bin_it_mdot = functools.partial(us.wmedians, xbins=xmdotf)
 
     if(read_spin == True):
+       ind = np.where((np.isnan(spin) == True) | (np.isinf(spin) == True))
+       if (len(spin[ind]) > 0):
+            print("Number of galaxies with a BH spin of NaN:", len(spin[ind]))
+       else:
+            print("All galaxies have well defined BH spin")
+   
        print(max(spin), min(spin))
        spin = np.abs(spin)
        ind = np.where(mbh > 0)
@@ -82,7 +97,7 @@ def prepare_data(hdf5_data, index, spinbh, spinmdot, mdotmbh, mdotmbh_hh, BHSFR,
     ind = np.where(ssfr < 1e-14)
     ssfr[ind] = 2e-14
 
-    ind = np.where((mbh > 0) & (ssfr > 1e-14) & ((mbulge + mdisk)/h0 > 3e8) & (typeg <= 0))
+    ind = np.where((mbh > 0) & (ssfr > 1e-14) & ((mbulge + mdisk)/h0 > 1e9) & (typeg <= 0))
     BHSFR[index,:] = bin_it(x=np.log10(mbh[ind]) - np.log10(float(h0)),
                             y=np.log10(ssfr[ind]))
 
@@ -183,17 +198,17 @@ def plot_macc_BH(plt, outdir, obsdir, mdotmbh, mdotmbh_hh, BHSFR):
     xmin, xmax, ymin, ymax = 4, 11, -5, 1
 
     common.prepare_ax(ax, xmin, xmax, ymin, ymax, xtit, ytit, locators=(0.1, 1, 0.1))
-    for i,c in enumerate(cols):
+    for i,c in enumerate(zlist):
         ind = np.where(mdotmbh[i,0,:] != 0)
         if(len(xmf[ind]) > 0):
             xplot = xmf[ind]
             yplot = mdotmbh[i,0,ind]
             errdn = mdotmbh[i,1,ind]
             errup = mdotmbh[i,2,ind]
-            ax.plot(xplot,yplot[0],color=c,label="z=%s" % str(zlist[i]))
+            ax.plot(xplot,yplot[0],color=cols[i],label="z=%s" % str(c))
             if(i == 0 or i == 5):
-               ax.fill_between(xplot,yplot[0],yplot[0]-errdn[0], facecolor=c, alpha=0.5, interpolate=True)
-               ax.fill_between(xplot,yplot[0],yplot[0]+errup[0], facecolor=c, alpha=0.5, interpolate=True)
+               ax.fill_between(xplot,yplot[0],yplot[0]-errdn[0], facecolor=cols[i], alpha=0.5, interpolate=True)
+               ax.fill_between(xplot,yplot[0],yplot[0]+errup[0], facecolor=cols[i], alpha=0.5, interpolate=True)
     
     common.prepare_legend(ax, cols, loc=2)
 
@@ -205,17 +220,17 @@ def plot_macc_BH(plt, outdir, obsdir, mdotmbh, mdotmbh_hh, BHSFR):
     plt.subplots_adjust(bottom=0.15, left=0.15)
 
     common.prepare_ax(ax, xmin, xmax, ymin, ymax, xtit, ytit, locators=(0.1, 1, 0.1))
-    for i,c in enumerate(cols):
+    for i,c in enumerate(zlist):
         ind = np.where(mdotmbh_hh[i,0,:] != 0)
         if(len(xmf[ind]) > 0):
             xplot = xmf[ind]
             yplot = mdotmbh_hh[i,0,ind]
             errdn = mdotmbh_hh[i,1,ind]
             errup = mdotmbh_hh[i,2,ind]
-            ax.plot(xplot,yplot[0],color=c,label="z=%s" % str(zlist[i]))
-            if(i == 0 or i == 5):
-               ax.fill_between(xplot,yplot[0],yplot[0]-errdn[0], facecolor=c, alpha=0.5, interpolate=True)
-               ax.fill_between(xplot,yplot[0],yplot[0]+errup[0], facecolor=c, alpha=0.5, interpolate=True)
+            ax.plot(xplot,yplot[0],color=cols[i],label="z=%s" % str(c))
+            if(i == 0 or i == 5 or i == 7):
+               ax.fill_between(xplot,yplot[0],yplot[0]-errdn[0], facecolor=cols[i], alpha=0.5, interpolate=True)
+               ax.fill_between(xplot,yplot[0],yplot[0]+errup[0], facecolor=cols[i], alpha=0.5, interpolate=True)
     
     common.prepare_legend(ax, cols, loc=2)
 
@@ -223,34 +238,41 @@ def plot_macc_BH(plt, outdir, obsdir, mdotmbh, mdotmbh_hh, BHSFR):
     common.savefig(outdir, fig, 'macc-BH.pdf')
 
 
+    cols= ('Indigo','Navy','DarkTurquoise', 'Aquamarine', 'PaleGreen', 'Gold','Orange','red') 
 
     #SSFR vs BH mass
-    fig = plt.figure(figsize=(5,4.5))
+    fig = plt.figure(figsize=(3.5,4.5))
     ytit = "$\\rm log_{10} (\\rm sSFR/M_{\odot} yr^{-1})$"
     xtit = "$\\rm log_{10} (\\rm M_{\\rm BH}/M_{\odot})$"
 
-    xmin, xmax, ymin, ymax = 5, 12, -14, -7
-    xleg = xmax - 0.2 * (xmax - xmin)
-    yleg = ymax - 0.1 * (ymax - ymin)
+    xmin, xmax, ymin, ymax = 5, 11, -14, -7
+    xleg = xmax - 0.4 * (xmax - xmin)
+    yleg = ymax + 0.05 * (ymax - ymin)
 
     ax = fig.add_subplot(111)
     plt.subplots_adjust(bottom=0.15, left=0.15)
 
     common.prepare_ax(ax, xmin, xmax, ymin, ymax, xtit, ytit, locators=(0.1, 1, 0.1))
+    ax.text(7, -6.9, 'Shark v2.0', fontsize=12)
+
     #Predicted BH-bulge mass relation
-    for i,c in enumerate(cols):
+    for i,c in enumerate(zlist):
        ind = np.where(BHSFR[i,0,:] != 0)
        if(len(xmf[ind]) > 0):
            xplot = xmf[ind]
            yplot = BHSFR[i,0,ind]
            errdn = BHSFR[i,1,ind]
            errup = BHSFR[i,2,ind]
-           ax.plot(xplot,yplot[0],color=c,label="z=%s" % str(zlist[i]))
-           if(i == 0 or i == 5):
-              ax.fill_between(xplot,yplot[0],yplot[0]-errdn[0], facecolor=c, alpha=0.5, interpolate=True)
-              ax.fill_between(xplot,yplot[0],yplot[0]+errup[0], facecolor=c, alpha=0.5, interpolate=True)
+           if(i > 3):
+              ax.plot(xplot,yplot[0],color=cols[i],label="z=%s" % str(c))
+           else: 
+               ax.plot(xplot,yplot[0],color=cols[i]) 
+           if(i == 0 or i == 5 or i == 7):
+              ax.fill_between(xplot,yplot[0],yplot[0]-errdn[0], facecolor=cols[i], alpha=0.5, interpolate=True)
+              ax.fill_between(xplot,yplot[0],yplot[0]+errup[0], facecolor=cols[i], alpha=0.5, interpolate=True)
 
-    common.prepare_legend(ax, cols, loc=1)
+    ax.plot([7.5,7.5], [-12.3, -7], linestyle='dotted', color='grey')
+    common.prepare_legend(ax, cols[4:len(cols)], loc=3)
     plt.tight_layout()
     common.savefig(outdir, fig, 'BH-SSFR_evolution.pdf')
 
@@ -275,6 +297,7 @@ def main(modeldir, outdir, redshift_table, subvols, obsdir):
     BHSFR = np.zeros(shape = (len(zlist), 3, len(xmf)))
  
     for index, snapshot in enumerate(redshift_table[zlist]):
+        print("Will read redshift", zlist[index])
         hdf5_data = common.read_data(modeldir, snapshot, fields, subvols)
         prepare_data(hdf5_data, index, spinbh, spinmdot, mdotmbh, mdotmbh_hh, BHSFR, read_spin)
 

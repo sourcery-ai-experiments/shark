@@ -54,8 +54,8 @@ AGNFeedbackParameters::AGNFeedbackParameters(const Options &options)
 	options.load("agn_feedback.kappa_agn", kappa_agn);
 	options.load("agn_feedback.accretion_eff_cooling", nu_smbh);
 
-	// relevant for Lagos 22 model.
-	options.load("agn_feedback.kappa_radio", kappa_radio);
+	// relevant for Lagos 23 model.
+	options.load("agn_feedback.kappa_jet", kappa_jet);
 	options.load("agn_feedback.hot_halo_threshold", hot_halo_threshold);
 	options.load("agn_feedback.spin_model", spin_model);
 	options.load("agn_feedback.eta_superedd", eta_superedd);
@@ -75,8 +75,8 @@ AGNFeedbackParameters::AGNFeedbackParameters(const Options &options)
 	nu2_nu1 = std::pow(alpha_td, 2.0);
 
 	// control QSO feedback.
-	options.load("agn_feedback.qso_feedback", qso_feedback);
-	options.load("agn_feedback.epsilon_qso", epsilon_qso);
+	options.load("agn_feedback.wind_feedback", wind_feedback);
+	options.load("agn_feedback.epsilon_wind", epsilon_wind);
 
 }
 
@@ -90,11 +90,11 @@ Options::get<AGNFeedbackParameters::AGNFeedbackModel>(const std::string &name, c
 	else if (lvalue == "croton16") {
 		return AGNFeedbackParameters::CROTON16;
 	}
-	else if (lvalue == "lagos22") {
-		return AGNFeedbackParameters::LAGOS22;
+	else if (lvalue == "lagos23") {
+		return AGNFeedbackParameters::LAGOS23;
 	}
 	std::ostringstream os;
-	os << name << " option value invalid: " << value << ". Supported values are bower06, croton16 and lagos22";
+	os << name << " option value invalid: " << value << ". Supported values are bower06, croton16 and lagos23";
 	throw invalid_option(os.str());
 }
 
@@ -200,14 +200,13 @@ double AGNFeedback::accretion_rate_hothalo_smbh(double Lcool, double tacc, doubl
 		else if (parameters.model == AGNFeedbackParameters::CROTON16) {
 			macc = parameters.kappa_agn * 0.9375 * PI * G_cgs * M_Atomic_g * mu_Primordial * Lcool * 1e40 * (smbh.mass * MSOLAR_g);
 		}
-		else if (parameters.model == AGNFeedbackParameters::LAGOS22) {
+		else if (parameters.model == AGNFeedbackParameters::LAGOS23) {
 			// here we adopt Croton et al. (2006)
 			macc = parameters.kappa_agn * (smbh.mass / 1e8) * (fhot / 0.1) * std::pow( vvir / 200.0, 3.0);
-			//0.9375 * PI * G_cgs * M_Atomic_g * mu_Primordial * Lcool * 1e40 * (smbh.mass * MSOLAR_g);
 		}
 
 		// calculate new spin if necessary
-		if(parameters.model == AGNFeedbackParameters::LAGOS22){
+		if(parameters.model == AGNFeedbackParameters::LAGOS23){
 			// in this case compute spin
 			if(parameters.spin_model == AGNFeedbackParameters::VOLONTERI07){
 				volonteri07_spin(smbh);
@@ -253,14 +252,14 @@ double AGNFeedback::agn_bolometric_luminosity(const BlackHole &smbh, bool starbu
 
 	auto macc = cosmology->comoving_to_physical_mass(smbh.macc_hh);
 
-	if(parameters.model == AGNFeedbackParameters::LAGOS22 || starburst){
+	if(parameters.model == AGNFeedbackParameters::LAGOS23 || starburst){
 		//In this case also sum the starburst accretion rate
 		macc += cosmology->comoving_to_physical_mass(smbh.macc_sb);
 	}
 
 	// assume constant radiation efficiency unless this model is Lagos22
 	double Lbol = 0;
-	if (parameters.model == AGNFeedbackParameters::LAGOS22) {
+	if (parameters.model == AGNFeedbackParameters::LAGOS23) {
 		double LEdd = eddington_luminosity(mBH);
 		double m_dot_norm = accretion_rate_ratio(macc,mBH);
 		
@@ -297,7 +296,7 @@ double AGNFeedback::agn_mechanical_luminosity(const BlackHole &smbh){
 	auto macc = cosmology->comoving_to_physical_mass(smbh.macc_hh + smbh.macc_sb);
 	auto mBH = cosmology->comoving_to_physical_mass(smbh.mass);
 
-	double m_dotdiv0p01 = accretion_rate_ratio(macc,mBH) / 0.01;
+	double m_dotdiv0p01 = accretion_rate_ratio(macc, mBH) / 0.01;
 	double Lmech = 0;
 
 	if(m_dotdiv0p01 >= 1.0){
@@ -329,14 +328,16 @@ double AGNFeedback::smbh_growth_starburst(double mgas, double vvir, double tacc,
 
 	auto &smbh = galaxy.smbh;
 
+	float TOL = 0.99;
+
 	// Grow supermassive BH only if above the black hole seed (avoid formation of low BH masses without seeds).
-        if(smbh.mass > parameters.mseed){
+        if(smbh.mass >= TOL * parameters.mseed){
 		if(mgas > 0){
 			m =  parameters.f_smbh * mgas / (1 + std::pow(parameters.v_smbh/vvir, 2.0));
 		}
         
 		// calculate new spin if necessary
-		if(parameters.model == AGNFeedbackParameters::LAGOS22){
+		if(parameters.model == AGNFeedbackParameters::LAGOS23){
 			// in this case compute spin
 			if(parameters.spin_model == AGNFeedbackParameters::VOLONTERI07){
 				volonteri07_spin(smbh);
@@ -400,7 +401,7 @@ void AGNFeedback::qso_outflow_rate(double mgas, const BlackHole &smbh, double zg
 	double mBH = cosmology->comoving_to_physical_mass(smbh.mass);
 
 	// QSO feedback only acts if the accretion rate is >0, BH mass is > 0 and QSO feedback is activated by the user.
-	if(macc > 0 && mBH > 0 && sfr > 0 && mgas > 0 && parameters.qso_feedback){
+	if(macc > 0 && mBH > 0 && sfr > 0 && mgas > 0 && parameters.wind_feedback){
 		double Lbol = agn_bolometric_luminosity(smbh, true);
 		double Lcrit = qso_critical_luminosity(mgas, mbulge, rbulge);
 
@@ -413,7 +414,7 @@ void AGNFeedback::qso_outflow_rate(double mgas, const BlackHole &smbh, double zg
 
 			double mout_rate= mgas/tsalp;
 
-			double mejec_rate = (parameters.epsilon_qso * std::pow(vout/vcirc, 2.0) - 1) * mout_rate;
+			double mejec_rate = (parameters.epsilon_wind * std::pow(vout/vcirc, 2.0) - 1) * mout_rate;
 
 			// Apply boundary conditions to outflow and ejection rates
 			if(mout_rate <  0 || std::isnan(mout_rate)){

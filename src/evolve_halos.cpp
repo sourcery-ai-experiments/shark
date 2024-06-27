@@ -51,8 +51,11 @@ void adjust_main_galaxy(const SubhaloPtr &parent, const SubhaloPtr &descendant)
 		descendant->star_central_infall.mass_metals = main_galaxy->stellar_mass_metals();
 		//if subhalo will become a satellite subhalo then transfer the stellar_halo.
 		descendant->host_halo->central_subhalo->stellar_halo += parent->stellar_halo;
+		//if subhalo will become a satellite subhalo then transfer excess jet power.
+		descendant->host_halo->excess_jetfeedback += parent->host_halo->excess_jetfeedback;
 		descendant->host_halo->central_subhalo->mean_galaxy_making_stellar_halo += parent->mean_galaxy_making_stellar_halo;
 		parent->stellar_halo.restore_baryon();
+		parent->host_halo->excess_jetfeedback = 0;
 		parent->mean_galaxy_making_stellar_halo = 0;
 	}
 
@@ -144,10 +147,14 @@ void transfer_galaxies_to_next_snapshot(const std::vector<HaloPtr> &halos, int s
 			descendant_subhalo->stellar_halo += subhalo->stellar_halo;
 			descendant_subhalo->mean_galaxy_making_stellar_halo += subhalo->mean_galaxy_making_stellar_halo;
 
+			// Track halo cooling and its properties.
 			if (subhalo->main_progenitor) {
+				descendant_subhalo->host_halo->hydrostatic_eq = subhalo->host_halo->hydrostatic_eq;
+				if(descendant_subhalo->host_halo->Mvir > 3e12){
+					descendant_subhalo->host_halo->hydrostatic_eq = true;
+				}	
 				descendant_subhalo->cooling_subhalo_tracking = subhalo->cooling_subhalo_tracking;
 			}
-
 		}
 	}
 
@@ -177,14 +184,14 @@ void reset_instantaneous_galaxy_properties(const std::vector<HaloPtr> &halos, in
 
 			// Make sure all SFRs and BH accretion rates (in mass and metals) are set to 0 for the next snapshot
 			for (auto &galaxy: subhalo->galaxies) {
-				galaxy.sfr_bulge_mergers  = 0;
-				galaxy.sfr_z_bulge_mergers= 0;
-				galaxy.sfr_bulge_diskins  = 0;
-				galaxy.sfr_z_bulge_diskins= 0;
-				galaxy.sfr_z_disk         = 0;
-				galaxy.sfr_disk           = 0;
-				galaxy.smbh.macc_sb       = 0;
-				galaxy.smbh.macc_hh       = 0;
+				galaxy.sfr_bulge_mergers	= 0;
+				galaxy.sfr_z_bulge_mergers	= 0;
+				galaxy.sfr_bulge_diskins	= 0;
+				galaxy.sfr_z_bulge_diskins	= 0;
+				galaxy.sfr_z_disk		= 0;
+				galaxy.sfr_disk			= 0;
+				galaxy.smbh.macc_sb		= 0;
+				galaxy.smbh.macc_hh		= 0;
 
 				//restart counter of mergers and disk instabilities.
 				galaxy.interaction.restore_interaction_item();
@@ -257,6 +264,7 @@ void track_total_baryons(Cosmology &cosmology, ExecutionParameters execparams, S
 
 				if(execparams.output_sf_histories){
 
+					//define and save SF history item
 					HistoryItem hist_galaxy;
 					hist_galaxy.sfr_disk            = galaxy.sfr_disk;
 					hist_galaxy.sfr_bulge_mergers   = galaxy.sfr_bulge_mergers;
@@ -266,6 +274,16 @@ void track_total_baryons(Cosmology &cosmology, ExecutionParameters execparams, S
 					hist_galaxy.sfr_z_bulge_diskins = galaxy.sfr_z_bulge_diskins;
 					hist_galaxy.snapshot            = snapshot;
 					galaxy.history.emplace_back(hist_galaxy);
+
+					//define and save BH history item
+					BHHistoryItem bh_hist_galaxy;
+					bh_hist_galaxy.macc_hh 		= galaxy.smbh.macc_hh;
+					bh_hist_galaxy.macc_sb	 	= galaxy.smbh.macc_sb;
+					bh_hist_galaxy.massembly 	= galaxy.smbh.massembly;
+					bh_hist_galaxy.mbh 		= galaxy.smbh.mass; 
+					bh_hist_galaxy.spin 		= galaxy.smbh.spin;
+				        bh_hist_galaxy.snapshot 	= snapshot;	
+					galaxy.bh_history.emplace_back(bh_hist_galaxy);
 				}
         
 				//Accumulate galaxy baryons

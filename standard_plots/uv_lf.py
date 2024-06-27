@@ -47,20 +47,20 @@ def plot_uv_lf_evo(plt, outdir, obsdir, h0, LFs_dust, LFs_nodust, nbands):
     volcorr = 3.0*np.log10(h0)
     xlf_obs  = xlf
  
-    xtit="$\\rm 1500\\AA\, mag\, (AB)$ GALEX FUV band"
+    xtit="$\\rm 1500\\AA\, mag\, (AB)$"
     ytit="$\\rm log_{10}(\Phi/{\\rm dex^{-1}} {\\rm Mpc}^{-3})$"
 
     xmin, xmax, ymin, ymax = -25, -15, -6, -1
     xleg = xmin + 0.2 * (xmax-xmin)
     yleg = ymax - 0.1 * (ymax-ymin)
 
-    fig = plt.figure(figsize=(5,13))
+    fig = plt.figure(figsize=(5,14))
 
-    subplots = (411, 412, 413, 414)
-    idx = (0, 1, 2, 3)
-    zs  = (0, 1, 2, 3)
-    band = nbands-1
-    labels= ('z=3', 'z=4', 'z=6', 'z=8')
+    subplots = (511, 512, 513, 514, 515)
+    idx = (0, 1, 2, 3, 4)
+    zs  = (0, 1, 2, 3, 4)
+    band = 0 #28
+    labels= ('z=3', 'z=4', 'z=6', 'z=8', 'z=10')
   
     corrm_obs = -5.0*np.log10(h0/0.7) 
     corry_obs = 3.0*np.log10(h0/0.7)
@@ -68,7 +68,7 @@ def plot_uv_lf_evo(plt, outdir, obsdir, h0, LFs_dust, LFs_nodust, nbands):
 
         ax = fig.add_subplot(subplot)
         ytitplot = ytit
-        if (idx == 3):
+        if (idx == 4):
             xtitplot = xtit
         else:
             xtitplot = ' '
@@ -136,6 +136,19 @@ def plot_uv_lf_evo(plt, outdir, obsdir, h0, LFs_dust, LFs_nodust, nbands):
            yup  = np.log10(pF8*1e-3+dpuF8*1e-3)
            ax.errorbar(lmF15+corrm_obs, yobs+corry_obs, yerr=[yobs-ydn,yup-yobs], ls='None', mfc='None', ecolor = 'grey', mec='grey',marker='v')
 
+           file = obsdir+'/lf/lf1500_z8_adams23.data'
+           lm,p,dp = np.loadtxt(file,usecols=[0,1,2],unpack=True)
+           ax.errorbar(lm+corrm_obs, np.log10(p * 1e-5)+corry_obs, yerr=[np.log10(p)-np.log10(dp),np.log10(p + dp) - np.log10(p)], ls='None', mfc='None', ecolor = 'grey', mec='grey',marker='D', label='Adams+2023')
+
+        if(idx == 4):
+           file = obsdir+'/lf/lf1500_z10_oesch2018.data'
+           lm,p,dpu,dpd = np.loadtxt(file,usecols=[0,1, 2, 3],unpack=True)
+           ax.errorbar(lm+corrm_obs, p+corry_obs, yerr=[p-dpu,dpd-p], ls='None', mfc='None', ecolor = 'grey', mec='grey',marker='*', label='Oesch+2018')
+
+           file = obsdir+'/lf/lf1500_z10_adams23.data'
+           lm,p,dp = np.loadtxt(file,usecols=[0,1,2],unpack=True)
+           ax.errorbar(lm+corrm_obs, np.log10(p * 1e-5)+corry_obs, yerr=[np.log10(p)-np.log10(dp),np.log10(p + dp) - np.log10(p)], ls='None', mfc='None', ecolor = 'grey', mec='grey',marker='D')
+
         #Predicted LF
         ind = np.where(LFs_dust[z,4,band,:] < 0.)
         y = LFs_dust[z,4,band,ind]+volcorr-np.log10(dm)
@@ -145,7 +158,7 @@ def plot_uv_lf_evo(plt, outdir, obsdir, h0, LFs_dust, LFs_nodust, nbands):
         ax.plot(xlf_obs[ind],y[0],'k', linewidth=1)
         if(idx == 1):
            for a,b,c in zip(xlf_obs,LFs_dust[z,4,band,:],LFs_nodust[z,4,band,:]):
-               print a, b+volcorr-np.log10(dm),c+volcorr-np.log10(dm)
+               print (a, b+volcorr-np.log10(dm),c+volcorr-np.log10(dm))
 
         ind = np.where(LFs_dust[z,3,band,:] < 0.)
         y = LFs_dust[z,3,band,ind]+volcorr-np.log10(dm)
@@ -153,9 +166,10 @@ def plot_uv_lf_evo(plt, outdir, obsdir, h0, LFs_dust, LFs_nodust, nbands):
         ind = np.where(LFs_dust[z,2,band,:] < 0.)
         y = LFs_dust[z,2,band,ind]+volcorr-np.log10(dm)
         ax.plot(xlf_obs[ind],y[0],'r', linewidth=2, linestyle='dashed')
-        if idx == 0 or idx == 1:
+        if ((idx == 0) or (idx == 1) or (idx ==4) or (idx == 3)):
             common.prepare_legend(ax, ['grey','grey','grey'], loc=4)
 
+    plt.tight_layout()
     common.savefig(outdir, fig, "UV_luminosity_function_evolution.pdf")
 
 def prepare_data(hdf5_data, phot_data, phot_data_nod, LFs_dust, LFs_nodust, index, nbands):
@@ -163,10 +177,8 @@ def prepare_data(hdf5_data, phot_data, phot_data_nod, LFs_dust, LFs_nodust, inde
     #star_formation_histories and SharkSED have the same number of galaxies in the same order, and so we can safely assume that to be the case.
     #to select the same galaxies in galaxies.hdf5 we need to ask for all of those that have a stellar mass > 0, and then assume that they are in the same order.
 
-    (h0, _, mdisk, mbulge, mhalo, mshalo, typeg, age, 
+    (h0, volh, mdisk, mbulge, mhalo, mshalo, typeg, age,
      sfr_disk, sfr_burst, id_gal) = hdf5_data
-   
-    #(bulge_diskins_hist, bulge_mergers_hist, disk_hist) = sfh
 
     #components:
     #(len(my_data), 2, 2, 5, nbands)
@@ -175,30 +187,32 @@ def prepare_data(hdf5_data, phot_data, phot_data_nod, LFs_dust, LFs_nodust, inde
     #2: total bulge
     #3: disk
     #4: total
+    seds_bulge_dummy = phot_data[0]
+    ngals = len(seds_bulge_dummy[0,:])
+    SEDs_dust = np.zeros(shape = (5,nbands,ngals))
+    SEDs_dust[0,:] = phot_data[0]
+    SEDs_dust[1,:] = phot_data[1]
+    SEDs_dust[2,:] = phot_data[2]
+    SEDs_dust[3,:] = phot_data[3]
+    SEDs_dust[4,:] = phot_data[4]
+    SEDs_nodust = np.zeros(shape = (5,nbands,ngals))
+    SEDs_nodust[0,:] = phot_data_nod[0]
+    SEDs_nodust[1,:] = phot_data_nod[1]
+    SEDs_nodust[2,:] = phot_data_nod[2]
+    SEDs_nodust[3,:] = phot_data_nod[3]
+    SEDs_nodust[4,:] = phot_data_nod[4]
 
-    ind = np.where(mdisk + mbulge > 0)
-    SEDs_dust = np.zeros(shape = (len(mdisk[ind]), 5, nbands))
-    SEDs_nodust = np.zeros(shape = (len(mdisk[ind]), 5, nbands))
-
-    p = 0
-    for c in range(0,5):
-        indust = phot_data[p]
-        innodust = phot_data_nod[p]
-        for i in range(0,nbands):
-            SEDs_dust[:,c,i] = indust[i,:]
-            SEDs_nodust[:,c,i] = innodust[i,:]
-        p = p + 1
-
+    #print(SEDs_dust.shape)
     for i in range(0,nbands):
         for c in range(0,5):
             #calculate LF with bands with dust
-            ind = np.where(SEDs_dust[:,c,i] < -1)
-            H, bins_edges = np.histogram(SEDs_dust[ind,c,i],bins=np.append(mbins,mupp))
+            ind = np.where(SEDs_dust[c,i,:] < -1)
+            H, bins_edges = np.histogram(SEDs_dust[c,i,:],bins=np.append(mbins,mupp))
             LFs_dust[index,c,i,:] = LFs_dust[index,c,i,:] + H
 
             #calculate LF of intrinsic bands 
-            ind = np.where(SEDs_nodust[:,c,i] < -1)
-            H, bins_edges = np.histogram(SEDs_nodust[ind,c,i],bins=np.append(mbins,mupp))
+            ind = np.where(SEDs_nodust[c,i,:] < -1)
+            H, bins_edges = np.histogram(SEDs_nodust[c,i,:],bins=np.append(mbins,mupp))
             LFs_nodust[index,c,i,:] = LFs_nodust[index,c,i,:] + H
 
 
@@ -206,27 +220,24 @@ def main(model_dir, outdir, redshift_table, subvols, obsdir):
 
     # Loop over redshift and subvolumes
     plt = common.load_matplotlib()
-    fields = {'galaxies': ('mstars_disk', 'mstars_bulge', 'mvir_hosthalo',
-                           'mvir_subhalo', 'type', 'mean_stellar_age', 
-                           'sfr_disk', 'sfr_burst', 'id_galaxy')}
-
-    #sfh_fields = {'bulges_diskins': ('star_formation_rate_histories'),
-    #              'bulges_mergers': ('star_formation_rate_histories'),
-    #              'disks': ('star_formation_rate_histories')}
 
     Variable_Ext = True
+
+    fields = {'galaxies': ('mstars_disk', 'mstars_bulge', 'mvir_hosthalo',
+                           'mvir_subhalo', 'type', 'mean_stellar_age',
+                           'sfr_disk', 'sfr_burst', 'id_galaxy')}
 
     fields_sed = {'SED/ab_dust': ('bulge_d','bulge_m','bulge_t','disk','total'),}
     fields_sed_nod = {'SED/ab_nodust': ('bulge_d','bulge_m','bulge_t','disk','total')}
 
-    z = (3.0, 4.0, 6.0, 8.0) #, 1.0, 1.5, 2.0)
+    z = (3.0, 4.0, 6.0, 8.0, 10.0)  #(8.0, 9, 10.5, 12.5) #, 1.0, 1.5, 2.0)
     snapshots = redshift_table[z]
 
-    file_hdf5_sed = "Shark-SED-eagle-rr14-steep.hdf5" 
+    file_hdf5_sed = "Shark-SED-eagle-rr14.hdf5" 
     # Create histogram
     for index, snapshot in enumerate(snapshots):
-
         hdf5_data = common.read_data(model_dir, snapshot, fields, subvols)
+
         if(Variable_Ext == False):
            seds = common.read_photometry_data(model_dir, snapshot, fields_sed, subvols)
            seds_nod = common.read_photometry_data(model_dir, snapshot, fields_sed_nod, subvols)
@@ -236,6 +247,7 @@ def main(model_dir, outdir, redshift_table, subvols, obsdir):
 
         nbands = len(seds[0]) 
 
+        print(nbands)
         if(index == 0):
             LFs_dust     = np.zeros(shape = (len(z), 5, nbands, len(mbins)))
             LFs_nodust   = np.zeros(shape = (len(z), 5, nbands, len(mbins)))
@@ -256,8 +268,16 @@ def main(model_dir, outdir, redshift_table, subvols, obsdir):
     LFs_nodust[ind] = np.log10(LFs_nodust[ind])
 
     if(Variable_Ext):
-       outdir = os.path.join(outdir, 'eagle-rr14-steep')
+       outdir = os.path.join(outdir, 'eagle-rr14')
 
+    volcorr = 3.0*np.log10(h0)
+
+    band = 0
+    for i,zin in enumerate(z):
+       print("#UV LF at redshift:", zin)
+       print("#rest_Frame_mag num_Density_dust num_density_nodust")
+       for a,b,c in zip(xlf, LFs_dust[i,4,band,:], LFs_nodust[i,4,band,:]):
+           print(a,b+volcorr-np.log10(dm),c+volcorr-np.log10(dm))
     plot_uv_lf_evo(plt, outdir, obsdir, h0, LFs_dust, LFs_nodust, nbands)
 
 if __name__ == '__main__':
