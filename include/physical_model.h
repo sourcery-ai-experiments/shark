@@ -84,7 +84,8 @@ public:
 	PhysicalModel(
 			double ode_solver_precision,
 			ODESolver::ode_evaluator evaluator,
-			GasCooling gas_cooling) :
+			GasCooling gas_cooling,
+			DarkMatterHaloParameters dark_matter_params) :
 		params {*this, false, 0., 0., 0., 0., 0., 0., 0., 0., 0., {}},
 		starburst_params {*this, true, 0., 0., 0., 0., 0., 0., 0., 0., 0., {}},
 		ode_solver(evaluator, NC, ode_solver_precision, &params),
@@ -134,12 +135,12 @@ public:
 		}
 
 		params.rstar      = galaxy.disk_stars.rscale; //stellar scale radius.
-		if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Vvir_infall != 0){
+		params.vsubh      = subhalo.Vvir;
+		if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Vvir_infall != 0 &&
+				dark_matter_params.apply_fix_to_mass_swapping_events){
 			params.vsubh = subhalo.Vvir_infall;
 		}
-		else{
-			params.vsubh = subhalo.Vvir;
-		}
+
 		params.jcold_halo = subhalo.cold_halo_gas.sAM;
 		params.delta_t = delta_t;
 		params.smbh = galaxy.smbh;
@@ -170,12 +171,13 @@ public:
 
 		starburst_params.rgas = galaxy.bulge_gas.rscale; //gas scale radius.
 		starburst_params.rstar = galaxy.bulge_stars.rscale; //stellar scale radius.
-		if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Vvir_infall != 0){
+		starburst_params.vsubh = subhalo.Vvir;
+
+		if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Vvir_infall != 0 &&
+				dark_matter_params.apply_fix_to_mass_swapping_events){
 			starburst_params.vsubh = subhalo.Vvir_infall;
 		}
-		else{
-			starburst_params.vsubh = subhalo.Vvir;
-		}
+
 		starburst_params.vgal = galaxy.bulge_gas.sAM / galaxy.bulge_gas.rscale;
 		starburst_params.delta_t = delta_t;
 		starburst_params.redshift = z;
@@ -227,7 +229,8 @@ public:
 			AGNFeedback agn_feedback,
 			RecyclingParameters recycling_parameters,
 			GasCoolingParameters gas_cooling_parameters,
-			AGNFeedbackParameters agn_parameters);
+			AGNFeedbackParameters agn_parameters,
+			DarkMatterHaloParameters dark_matter_params);
 
 	void from_galaxy(std::vector<double> &y, const Subhalo &subhalo, const Galaxy &galaxy) override;
 	void to_galaxy(const std::vector<double> &y, Subhalo &subhalo, Galaxy &galaxy, double delta_t) override;

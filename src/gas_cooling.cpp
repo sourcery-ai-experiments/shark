@@ -356,16 +356,13 @@ double GasCooling::cooling_rate(Subhalo &subhalo, Galaxy &galaxy, double z, doub
 	//Assume hot halo has the same specific angular momentum of DM halo.
 	// NOTE: change depending it is satellite or central
 	// NOTE: change using spin
-	if(subhalo.subhalo_type == Subhalo::CENTRAL){
-		subhalo.hot_halo_gas.sAM = subhalo.L.norm() / subhalo.host_halo->Mvir;
-	}
-	else if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0){
+	subhalo.hot_halo_gas.sAM = subhalo.L.norm() / subhalo.Mvir;
+
+	if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0){
 		subhalo.hot_halo_gas.sAM = subhalo.L_infall.norm() / subhalo.Mvir_infall;
 	}
-	else{
-		subhalo.hot_halo_gas.sAM = subhalo.L.norm() / subhalo.Mvir;
-	}
 	
+
 	/**
 	* We need to convert masses and velocities to physical units before proceeding with calculation.
 	*/

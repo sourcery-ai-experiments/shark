@@ -163,9 +163,11 @@ std::vector<MergerTreePtr> TreeBuilder::build_trees(std::vector<HaloPtr> &halos,
 	LOG(info) << "Defining central subhalos";
 	define_central_subhalos(trees, sim_params, dark_matter_params);
 
-	// Function to redefine central subhalo properties from host halo
-	LOG(info) << "Defining velocity, concentration and lambda of central subhalos";
-	define_properties_central_subhalos(trees, sim_params, darkmatterhalos);
+	if(dark_matter_params.apply_fix_to_mass_swapping_events){
+		// Function to redefine central subhalo properties from host halo
+		LOG(info) << "Defining velocity, concentration and lambda of central subhalos";
+		define_properties_central_subhalos(trees, sim_params, dark_matter_params, darkmatterhalos);
+	}
 
 	// Define accretion rate from DM in case we want this.
 	LOG(info) << "Defining accretion rate using cosmology";
@@ -175,9 +177,11 @@ std::vector<MergerTreePtr> TreeBuilder::build_trees(std::vector<HaloPtr> &halos,
 	LOG(info) << "Defining ages of halos and subhalos";
 	define_ages_halos(trees, sim_params, darkmatterhalos);
 
-	// Function to redefine satellite subhalo properties with properties at infall
-	LOG(info) << "Defining velocity, concentration and lambda of satellite subhalos";
-	define_properties_satellite_subhalos(trees, sim_params, darkmatterhalos);
+	if(dark_matter_params.apply_fix_to_mass_swapping_events){
+		// Function to redefine satellite subhalo properties with properties at infall
+		LOG(info) << "Defining velocity, concentration and lambda of satellite subhalos";
+		define_properties_satellite_subhalos(trees, sim_params, darkmatterhalos);
+	}
 
 	return trees;
 }
@@ -239,7 +243,7 @@ void TreeBuilder::define_central_subhalos(const std::vector<MergerTreePtr> &tree
 
 			for (auto &halo: tree->halos_at(snapshot)) {
 
-				// First check in halo has a central subhalo, if yes, then continue with loop.
+				// First check if halo has a central subhalo, if yes, then continue with loop.
 				if (halo->central_subhalo) {
 					continue;
 				}
@@ -297,7 +301,6 @@ void TreeBuilder::define_central_subhalos(const std::vector<MergerTreePtr> &tree
 							sub->last_snapshot_identified = sub->snapshot;
 						}
 					}
-
 					// Now move to the ascendants of the main progenitor subhalo and repeat process.
 					ascendants = subhalo->ascendants;
 
@@ -502,8 +505,9 @@ void TreeBuilder::define_ages_halos(const std::vector<MergerTreePtr> &trees,
 
 
 void TreeBuilder::define_properties_central_subhalos(const std::vector<MergerTreePtr> &trees,
-					  SimulationParameters &sim_params,
-					  const DarkMatterHalosPtr &darkmatterhalos){
+					SimulationParameters &sim_params,
+					DarkMatterHaloParameters &dark_matter_params,
+					const DarkMatterHalosPtr &darkmatterhalos){
 
 		//Loop over trees
 		for(auto &tree: trees) {
@@ -526,9 +530,28 @@ void TreeBuilder::define_properties_central_subhalos(const std::vector<MergerTre
 						}
 					}
 
-				}
+			}
 		}
+	}
 
+
+	// now we will loop again to redefine lambda to the value of the main descendant in the cases of subhalos with unreliable values:
+	for(auto &tree: trees) {
+		for(int snapshot=sim_params.max_snapshot; snapshot >= sim_params.min_snapshot; snapshot--) {
+			for(auto &halo: tree->halos_at(snapshot)){
+				// First check if halo has a central subhalo, if yes, then continue with loop.
+				if (halo->central_subhalo) {
+					continue;
+				}
+				auto main_prog = halo->central_subhalo->main();
+
+				// Redefine lambda of main progenitor to have the same one as its descendant, only if this halo is not reliable.
+				if (!dark_matter_params.use_converged_lambda_catalog || (dark_matter_params.use_converged_lambda_catalog && main_prog->Mvir/sim_params.particle_mass < dark_matter_params.min_part_convergence)) {
+					main_prog->lambda = halo->central_subhalo->lambda;
+					darkmatterhalos->redefine_angular_momentum(*main_prog, main_prog->lambda, sim_params.redshifts[main_prog->snapshot]);
+				}
+			}
+		}
 	}
 
 }
