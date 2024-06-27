@@ -61,7 +61,7 @@ public:
 
 	DarkMatterProfile haloprofile = NFW;
 	SizeModel sizemodel = MO98;
-        ConcentrationModel concentrationmodel = DUFFY08;
+	ConcentrationModel concentrationmodel = DUFFY08;
 
 	/**
 	Note that if random_lambda = true, the values of lambda will be drawn from a log-normal distribution randomly. However, if at the same time 
@@ -70,6 +70,7 @@ public:
 	bool random_lambda = false;
 	bool spin_mass_dependence = false;
 	bool use_converged_lambda_catalog = false; 
+	bool apply_fix_to_mass_swapping_events = false;
 	int  min_part_convergence = 100;
 
 };
@@ -98,7 +99,9 @@ public:
 
 	double halo_virial_velocity (double mvir, double redshift);
 
-	float halo_lambda (const Subhalo &subhalo, float m, double z, double npart);
+	float halo_lambda (Subhalo &subhalo, float m, double z, double npart);
+
+	void redefine_angular_momentum(Subhalo &subhalo, double lambda, double z);
 
 	double disk_size_theory (Subhalo &subhalo, double z);
 

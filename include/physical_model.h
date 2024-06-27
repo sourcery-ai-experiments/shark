@@ -32,6 +32,7 @@
 
 #include "agn_feedback.h"
 #include "components.h"
+#include "dark_matter_halos.h"
 #include "galaxy.h"
 #include "gas_cooling.h"
 #include "numerical_constants.h"
@@ -99,7 +100,7 @@ public:
 
 	virtual ~PhysicalModel() = default;
 
-	void evolve_galaxy(Subhalo &subhalo, Galaxy &galaxy, double z, double delta_t)
+	void evolve_galaxy(Subhalo &subhalo, Galaxy &galaxy, double z, double delta_t, bool apply_fix_to_mass_swapping_events)
 	{
 		/**
 		 * Parameters that are needed as input in the ode_solver:
@@ -134,12 +135,12 @@ public:
 		}
 
 		params.rstar      = galaxy.disk_stars.rscale; //stellar scale radius.
-		if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Vvir_infall != 0){
-		         params.vsubh      = subhalo.Vvir_infall;
+		params.vsubh      = subhalo.Vvir;
+		if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Vvir_infall != 0 &&
+				apply_fix_to_mass_swapping_events){
+			params.vsubh = subhalo.Vvir_infall;
 		}
-		else{
-		         params.vsubh      = subhalo.Vvir;
-		}
+
 		params.jcold_halo = subhalo.cold_halo_gas.sAM;
 		params.delta_t = delta_t;
 		params.smbh = galaxy.smbh;
@@ -152,7 +153,7 @@ public:
 
 	}
 
-	void evolve_galaxy_starburst(Subhalo &subhalo, Galaxy &galaxy, double z, double delta_t, bool from_galaxy_merger)
+	void evolve_galaxy_starburst(Subhalo &subhalo, Galaxy &galaxy, double z, double delta_t, bool apply_fix_to_mass_swapping_events, bool from_galaxy_merger)
 	{
 
 		/**
@@ -170,12 +171,13 @@ public:
 
 		starburst_params.rgas = galaxy.bulge_gas.rscale; //gas scale radius.
 		starburst_params.rstar = galaxy.bulge_stars.rscale; //stellar scale radius.
-		if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Vvir_infall != 0){
-		        starburst_params.vsubh = subhalo.Vvir_infall;
+		starburst_params.vsubh = subhalo.Vvir;
+
+		if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Vvir_infall != 0 &&
+				apply_fix_to_mass_swapping_events){
+			starburst_params.vsubh = subhalo.Vvir_infall;
 		}
-		else{
-		        starburst_params.vsubh = subhalo.Vvir;
-		}
+
 		starburst_params.vgal = galaxy.bulge_gas.sAM / galaxy.bulge_gas.rscale;
 		starburst_params.delta_t = delta_t;
 		starburst_params.redshift = z;

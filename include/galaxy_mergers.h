@@ -90,6 +90,7 @@ public:
 			ExecutionParameters execparams,
 			AGNFeedbackParameters agn_params,
 			SimulationParameters simparams,
+			DarkMatterHaloParameters dark_matter_params,
 			DarkMatterHalosPtr darkmatterhalo,
 			std::shared_ptr<BasicPhysicalModel> physicalmodel,
 			AGNFeedbackPtr agnfeedback);
@@ -158,6 +159,7 @@ private:
 	ExecutionParameters exec_params;
 	AGNFeedbackParameters agn_params;
 	SimulationParameters simparams;
+	DarkMatterHaloParameters dark_matter_params;
 	DarkMatterHalosPtr darkmatterhalo;
 	std::shared_ptr<BasicPhysicalModel> physicalmodel;
 	AGNFeedbackPtr agnfeedback;

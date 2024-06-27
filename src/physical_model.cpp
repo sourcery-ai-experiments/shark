@@ -166,8 +166,7 @@ BasicPhysicalModel::BasicPhysicalModel(
 	agn_feedback(std::move(agn_feedback)),
 	recycling_parameters(recycling_parameters),
 	gas_cooling_parameters(std::move(gas_cooling_parameters)),
-	agn_parameters(agn_parameters)
-{
+	agn_parameters(agn_parameters){
 	// no-op
 }
 

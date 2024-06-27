@@ -52,7 +52,7 @@ DarkMatterHaloParameters::DarkMatterHaloParameters(const Options &options)
 	options.load("dark_matter_halo.use_converged_lambda_catalog", use_converged_lambda_catalog);
 	options.load("dark_matter_halo.min_part_convergence", min_part_convergence);
 	options.load("dark_matter_halo.spin_mass_dependence", spin_mass_dependence);
-
+	options.load("dark_matter_halo.apply_fix_to_mass_swapping_events", apply_fix_to_mass_swapping_events);
 }
 
 template <>
@@ -144,16 +144,19 @@ double DarkMatterHalos::subhalo_dynamical_time (Subhalo &subhalo, double z){
 	double r = 0;
 	double v = 0;
  
-	if(subhalo.subhalo_type == Subhalo::CENTRAL){
+	if(subhalo.subhalo_type == Subhalo::CENTRAL &&
+			params.apply_fix_to_mass_swapping_events){
 		r = halo_virial_radius(subhalo.host_halo->Mvir, z);
 		v = subhalo.Vvir;
 	}
-	else if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0){
+	else if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0 &&
+			params.apply_fix_to_mass_swapping_events){
 		r = subhalo.rvir_infall;
 		v = subhalo.Vvir_infall;
 	}
 	else{
-	        // When the satellite is born as satellite (no infall properties)
+		// When the satellite is born as satellite (no infall properties) or
+		// when we don't to apply the fix to mass swapping events
 		r = halo_virial_radius(subhalo.Mvir, z);;
 		v = subhalo.Vvir;
 	}
@@ -166,36 +169,35 @@ double DarkMatterHalos::halo_virial_radius(double mvir, double z){
 	/**
 	 * Function to calculate the halo virial radius. Returns virial radius in physical Mpc/h.
 	 */
-        double v = halo_virial_velocity(mvir, z);
+	double v = halo_virial_velocity(mvir, z);
 	return constants::G * mvir / std::pow(v,2);
 }
 
 
-float DarkMatterHalos::halo_lambda (const Subhalo &subhalo, float m, double z, double npart){
+float DarkMatterHalos::halo_lambda (Subhalo &subhalo, float m, double z, double npart){
 
 	//Spin parameter either read from the DM files or assumed a random distribution.
 	double H0 = cosmology->hubble_parameter(z);
 	double lambda = subhalo.L.norm() / m * 1.5234153 / std::pow(constants::G * m, 0.666) * std::pow(H0,0.33);
 
-	if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0){
-	        lambda = subhalo.L_infall.norm() / m * 1.5234153 / std::pow(constants::G * m, 0.666) * std::pow(H0,0.33);
+	if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0 &&
+			params.apply_fix_to_mass_swapping_events){
+		lambda = subhalo.L_infall.norm() / m * 1.5234153 / std::pow(constants::G * m, 0.666) * std::pow(H0,0.33);
 	}
-	else{
-	        lambda = subhalo.L.norm() / m * 1.5234153 / std::pow(constants::G * m, 0.666) * std::pow(H0,0.33);
-	}
-	
+
 	if(lambda > 1){
 			lambda = 1;
 	}
 
-	double lambda_cen_mhalo = 0.03;
+	double lambda_mean_mhalo = 0.03;
 	if (params.spin_mass_dependence) {
 		// use a very weak dependence on Mhalo for the spin distribution, following Kim et al. (2015): arxiv:1508.06037
-		lambda_cen_mhalo = 0.00895651600584195 * std::log10(m)  - 0.07580254755439589;
+		lambda_mean_mhalo = 0.00895651600584195 * std::log10(m)  - 0.07580254755439589;
 	}
+
 	// Prime the generator with a known seed to allow for reproducible runs
 	std::default_random_engine generator(exec_params.get_seed(subhalo));
-	std::lognormal_distribution<double> distribution(std::log(lambda_cen_mhalo), std::abs(std::log(0.5)));
+	std::lognormal_distribution<double> distribution(std::log(lambda_mean_mhalo), std::abs(std::log(0.5)));
 	auto lambda_random = distribution(generator);
 
 	// Avoid zero values. In that case assume small lambda value.
@@ -206,17 +208,30 @@ float DarkMatterHalos::halo_lambda (const Subhalo &subhalo, float m, double z, d
 		 lambda_random = 1;
 	}
 
-	if(params.random_lambda && !params.use_converged_lambda_catalog){
+	if(params.random_lambda || (params.use_converged_lambda_catalog && npart < params.min_part_convergence)){
+		redefine_angular_momentum(subhalo, lambda_random, z);
 		return lambda_random;
 	}
-	else if (params.random_lambda && params.use_converged_lambda_catalog && npart < params.min_part_convergence){
-		return lambda_random;
-	} 
 	else {
 		//take the value read from the DM merger trees, that has been limited to a maximum of 1.
 		return lambda;
 	}
  
+}
+
+void DarkMatterHalos::redefine_angular_momentum(Subhalo &subhalo, double lambda, double z){
+
+	auto norm = subhalo.L.norm();
+
+	double H0 = cosmology->hubble_parameter(z);
+
+	auto m = subhalo.Mvir;
+	double factor_L = lambda * m / 1.5234153 * std::pow(constants::G * m, 0.666) / std::pow(H0,0.33);
+
+	subhalo.L.x = subhalo.L.x / norm * factor_L;
+	subhalo.L.y = subhalo.L.y / norm * factor_L;
+	subhalo.L.z = subhalo.L.z / norm * factor_L;
+
 }
 
 double DarkMatterHalos::disk_size_theory (Subhalo &subhalo, double z){
@@ -226,17 +241,19 @@ double DarkMatterHalos::disk_size_theory (Subhalo &subhalo, double z){
 		double Rvir = 0;
 		double lambda = 0;
 		
-		if(subhalo.subhalo_type == Subhalo::CENTRAL){
-		        Rvir = halo_virial_radius(subhalo.host_halo->Mvir, z);
+		if(subhalo.subhalo_type == Subhalo::CENTRAL &&
+				params.apply_fix_to_mass_swapping_events){
+			Rvir = halo_virial_radius(subhalo.host_halo->Mvir, z);
 			lambda = subhalo.host_halo->lambda;
 		}
-		else if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0){
-		        Rvir = subhalo.rvir_infall;
+		else if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0 &&
+				params.apply_fix_to_mass_swapping_events){
+			Rvir = subhalo.rvir_infall;
 			lambda = subhalo.lambda_infall;
 		}
 		else{
-		        // When satellites are born as satellites (not infall properties)
-		        Rvir = halo_virial_radius(subhalo.Mvir, z);
+			// When satellites are born as satellites (not infall properties) or when we don't to apply the fix to swapping events
+			Rvir = halo_virial_radius(subhalo.Mvir, z);
 			lambda = subhalo.lambda;
 		}
 
@@ -308,20 +325,22 @@ void DarkMatterHalos::cooling_gas_sAM(Subhalo &subhalo, double z){
 	if(params.random_lambda){
 		double H0 = 10.0* cosmology->hubble_parameter(z);
 
-		if(subhalo.subhalo_type == Subhalo::CENTRAL){
-		        // Define Mvir from host halo for central
-		        subhalo.cold_halo_gas.sAM = constants::SQRT2 * std::pow(constants::G,0.66) *
-			                                            subhalo.host_halo->lambda * std::pow(subhalo.host_halo->Mvir,0.66) / std::pow(H0,0.33);
+		if(subhalo.subhalo_type == Subhalo::CENTRAL &&
+				params.apply_fix_to_mass_swapping_events){
+			// Define Mvir from host halo for central
+			subhalo.cold_halo_gas.sAM = constants::SQRT2 * std::pow(constants::G,0.66) *
+					subhalo.host_halo->lambda * std::pow(subhalo.host_halo->Mvir,0.66) / std::pow(H0,0.33);
 		}
-		else if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0){
-		        // Define Mvir at infall for satellite
-		        subhalo.cold_halo_gas.sAM = constants::SQRT2 * std::pow(constants::G,0.66) *
-			                                            subhalo.lambda_infall * std::pow(subhalo.Mvir_infall,0.66) / std::pow(H0,0.33);
+		else if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0 &&
+				params.apply_fix_to_mass_swapping_events){
+			// Define Mvir at infall for satellite
+			subhalo.cold_halo_gas.sAM = constants::SQRT2 * std::pow(constants::G,0.66) *
+					subhalo.lambda_infall * std::pow(subhalo.Mvir_infall,0.66) / std::pow(H0,0.33);
 		}
 		else{
-		        // Define current Mvir for satellite born as satellite (no infall)
-		        subhalo.cold_halo_gas.sAM = constants::SQRT2 * std::pow(constants::G,0.66) *
-			                                            subhalo.lambda * std::pow(subhalo.Mvir,0.66) / std::pow(H0,0.33);
+			// Define current Mvir for satellite born as satellite (no infall) or when we don't want to apply the fix for swapping events.
+			subhalo.cold_halo_gas.sAM = constants::SQRT2 * std::pow(constants::G,0.66) *
+					subhalo.lambda * std::pow(subhalo.Mvir,0.66) / std::pow(H0,0.33);
 		}
 		
 	}
@@ -342,24 +361,35 @@ void DarkMatterHalos::cooling_gas_sAM(Subhalo &subhalo, double z){
 float DarkMatterHalos::enclosed_total_mass(const Subhalo &subhalo, double z, float r){
 
 	ConstGalaxyPtr galaxy;
+
 	double mvir = 0;
 	double rvir = 0;
 	double concentration = 0;
-	if(subhalo.subhalo_type == Subhalo::CENTRAL){
-		galaxy = subhalo.central_galaxy();
-		// Define Mvir, Rvir from host halo
-		mvir = subhalo.host_halo->Mvir;
-		rvir = halo_virial_radius(subhalo.host_halo->Mvir, z);
-		concentration = subhalo.host_halo->concentration;
+
+	if(	params.apply_fix_to_mass_swapping_events){
+		if(subhalo.subhalo_type == Subhalo::CENTRAL){
+			galaxy = subhalo.central_galaxy();
+			// Define Mvir, Rvir from host halo
+			mvir = subhalo.host_halo->Mvir;
+			rvir = halo_virial_radius(subhalo.host_halo->Mvir, z);
+			concentration = subhalo.host_halo->concentration;
+		}
+		else{
+			galaxy = subhalo.type1_galaxy();
+			// Define current Mvir, Rvir for satellites
+			// since this is to compute the ram pressure stripping
+			// for type1 galaxies, we use the information at infall
+			mvir = subhalo.Mvir_infall;
+			rvir = halo_virial_radius(subhalo.Mvir_infall, cosmology->convert_redshift_to_age(subhalo.infall_t));
+			concentration = subhalo.concentration_infall;
+		}
 	}
 	else{
-		galaxy = subhalo.type1_galaxy();
-		// Define current Mvir, Rvir for satellites
-		// since this is to compute the ram pressure stripping
 		mvir = subhalo.Mvir;
 		rvir = halo_virial_radius(subhalo.Mvir, z);
 		concentration = subhalo.concentration;
 	}
+
 	double mgal = 0;
 
 	auto rnorm = r/rvir;

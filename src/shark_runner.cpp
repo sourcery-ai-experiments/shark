@@ -249,6 +249,7 @@ void SharkRunner::impl::create_per_thread_objects()
 	ReionisationParameters reio_params(options);
 	ReincorporationParameters reinc_params(options);
 	StellarFeedbackParameters stellar_feedback_params(options);
+	DarkMatterHaloParameters dark_matter_params(options);
 
 	auto agnfeedback = make_agn_feedback(agn_params, cosmology, recycling_params, exec_params);
 	auto environment = make_environment(environment_params, dark_matter_halos, cosmology, cosmo_params, simulation_params);
@@ -260,8 +261,8 @@ void SharkRunner::impl::create_per_thread_objects()
 	for(unsigned int i = 0; i != threads; i++) {
 		auto physical_model = std::make_shared<BasicPhysicalModel>(exec_params.ode_solver_precision, gas_cooling, stellar_feedback, star_formation, *agnfeedback,
 				recycling_params, gas_cooling_params, agn_params);
-		GalaxyMergers galaxy_mergers(merger_parameters, cosmology, cosmo_params, exec_params, agn_params, simulation_params, dark_matter_halos, physical_model, agnfeedback);
-		DiskInstability disk_instability(disk_instability_params, merger_parameters, simulation_params, dark_matter_halos, physical_model, agnfeedback);
+		GalaxyMergers galaxy_mergers(merger_parameters, cosmology, cosmo_params, exec_params, agn_params, simulation_params, dark_matter_params, dark_matter_halos, physical_model, agnfeedback);
+		DiskInstability disk_instability(disk_instability_params, merger_parameters, simulation_params, dark_matter_params, dark_matter_halos, physical_model, agnfeedback);
 		thread_objects.emplace_back(std::move(physical_model), std::move(galaxy_mergers), std::move(disk_instability));
 	}
 }
@@ -358,7 +359,7 @@ evolution_times SharkRunner::impl::evolve_merger_tree(const MergerTreePtr &tree,
 		Timer t3;
 		for(auto &subhalo: halo->all_subhalos()) {
 			for(auto &galaxy: subhalo->galaxies) {
-				physical_model->evolve_galaxy(*subhalo, galaxy, z, delta_t);
+				physical_model->evolve_galaxy(*subhalo, galaxy, z, delta_t, dark_matter_halo_params.apply_fix_to_mass_swapping_events);
 			}
 		}
 		times.galaxy_evolution += t3.get();
