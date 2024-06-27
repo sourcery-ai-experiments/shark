@@ -182,7 +182,7 @@ void DiskInstability::create_starburst(SubhaloPtr &subhalo, Galaxy &galaxy, doub
 		double tdyn = agnfeedback->smbh_accretion_timescale(galaxy, z);
 		double delta_mbh = 0;
 		double delta_mzbh = 0;
-		if(subhalo->subhalo_type == Subhalo::SATELLITE && subhalo->Vvir_infall != 0){
+		if(subhalo->subhalo_type == Subhalo::SATELLITE && !subhalo->ascendants.empty()){
 		        // at infall for subhalos that become satellite
 		        delta_mbh = agnfeedback->smbh_growth_starburst(galaxy.bulge_gas.mass, subhalo->Vvir_infall, tdyn, galaxy);
 		}

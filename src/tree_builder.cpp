@@ -159,16 +159,16 @@ std::vector<MergerTreePtr> TreeBuilder::build_trees(std::vector<HaloPtr> &halos,
 	// Redefine angular momentum in the case of interpolated halos.
 	// spin_interpolated_halos(trees, sim_params);
 
+	// Define central subhalos
+	LOG(info) << "Defining central subhalos";
+	define_central_subhalos(trees, sim_params, dark_matter_params, darkmatterhalos);
+
 	// NOTE: new function to redefine central subhalo properties from host halo
 	// or satellite subhalo properties at infall
 	LOG(info) << "Defining velocity, concentration and lambda of subhalos";
 	define_properties_halos(trees, sim_params, darkmatterhalos);
-
-	// Define central subhalos
-	LOG(info) << "Defining central subhalos";
-	define_central_subhalos(trees, sim_params, dark_matter_params);
-
-	// Define accretion rate from DM in case we want this.
+	
+ 	// Define accretion rate from DM in case we want this.
 	LOG(info) << "Defining accretion rate using cosmology";
 	define_accretion_rate_from_dm(trees, sim_params, gas_cooling_params, *cosmology, AllBaryons);
 
@@ -202,31 +202,33 @@ void TreeBuilder::link(const SubhaloPtr &parent_shalo, const SubhaloPtr &desc_su
 
 SubhaloPtr TreeBuilder::define_central_subhalo(HaloPtr &halo, SubhaloPtr &subhalo)
 {
-	// point central subhalo to this subhalo.
+//	// point central subhalo to this subhalo.
 	halo->central_subhalo = subhalo;
-	halo->position = subhalo->position;
-	halo->velocity = subhalo->velocity;
-
-	halo->concentration = subhalo->concentration;
-	halo->lambda = subhalo->lambda;
-
-	/** If virial velocity of halo (which is calculated from the total mass
-	and redshift) is smaller than the virial velocity of the central subhalo, which is
-	directly calculated in VELOCIraptor, then adopt the VELOCIraptor one.**/
-	if(halo->Vvir < subhalo->Vvir){
-		halo->Vvir = subhalo->Vvir;
-	}
+//	halo->position = subhalo->position;
+//	halo->velocity = subhalo->velocity;
+//
+//	halo->concentration = subhalo->concentration;
+//	halo->lambda = subhalo->lambda;
+//
+//	/** If virial velocity of halo (which is calculated from the total mass
+//	and redshift) is smaller than the virial velocity of the central subhalo, which is
+//	directly calculated in VELOCIraptor, then adopt the VELOCIraptor one.**/
+//	if(halo->Vvir < subhalo->Vvir){
+//		halo->Vvir = subhalo->Vvir;
+//	}
 
 	//remove subhalo from satellite list.
 	remove_satellite(halo, subhalo);
 
+	
 	//define subhalo as central.
 	subhalo->subhalo_type = Subhalo::CENTRAL;
 
 	return subhalo;
 }
 
-void TreeBuilder::define_central_subhalos(const std::vector<MergerTreePtr> &trees, SimulationParameters &sim_params, DarkMatterHaloParameters &dark_matter_params){
+void TreeBuilder::define_central_subhalos(const std::vector<MergerTreePtr> &trees, SimulationParameters &sim_params, DarkMatterHaloParameters &dark_matter_params,
+					  const DarkMatterHalosPtr &darkmatterhalos){
 
 	//This function loops over merger trees and halos to define central galaxies in a self-consistent way. The loop starts at z=0.
 
@@ -246,7 +248,10 @@ void TreeBuilder::define_central_subhalos(const std::vector<MergerTreePtr> &tree
 
 				// save value of lambda to make sure that all main progenitors of this subhalo have the same lambda value. This is done for consistency 
 				// throughout time.
-				auto lambda = subhalo->lambda;
+				// NOTE: these are central subhalos, so use the host halo information
+				auto z = sim_params.redshifts[subhalo->snapshot];
+				auto npart = subhalo->Mvir/sim_params.particle_mass;
+				auto lambda = darkmatterhalos->halo_lambda(*subhalo, halo->Mvir, z, npart);;
 
 				// Now walk backwards through the main progenitor branch until subhalo has no more progenitors. This is done only in the case the ascendant
 				// halo does not have a central already.
@@ -285,6 +290,7 @@ void TreeBuilder::define_central_subhalos(const std::vector<MergerTreePtr> &tree
 					// Redefine lambda of main progenitor to have the same one as its descendant, only if this halo is not reliable.
 					if (!dark_matter_params.use_converged_lambda_catalog || (dark_matter_params.use_converged_lambda_catalog && main_prog->Mvir/sim_params.particle_mass < dark_matter_params.min_part_convergence)) {
 						main_prog->lambda = lambda;
+
 					}
 					subhalo = define_central_subhalo(ascendant_halo, main_prog);
 
@@ -299,7 +305,9 @@ void TreeBuilder::define_central_subhalos(const std::vector<MergerTreePtr> &tree
 					ascendants = subhalo->ascendants;
 
 				}
+
 			}
+
 		}
 	});
 
@@ -509,10 +517,12 @@ void TreeBuilder::define_properties_halos(const std::vector<MergerTreePtr> &tree
 
 				        for(auto &subhalo: halo->all_subhalos()){
 
-					        double z = sim_params.redshifts[subhalo->snapshot];
+ 					        double z = sim_params.redshifts[subhalo->snapshot];
 						double npart = subhalo->Mvir/sim_params.particle_mass;
 						double mvir = 0;
 
+						// Define subhalo properites: host halo information for centrals
+						// and current information for satellites
 						// Calculate different properties: concentration, Vvir and lambda
 						if(subhalo->subhalo_type == Subhalo::CENTRAL){
 						        mvir = halo->Mvir;
@@ -531,7 +541,22 @@ void TreeBuilder::define_properties_halos(const std::vector<MergerTreePtr> &tree
 						subhalo->Vvir = darkmatterhalos->halo_virial_velocity(mvir, z);
 
 					}
+
+					// Define host halo properties
+					// point central subhalo to this subhalo.
+					halo->position = halo->central_subhalo->position;
+					halo->velocity = halo->central_subhalo->velocity;
 					
+					halo->concentration = halo->central_subhalo->concentration;
+					halo->lambda = halo->central_subhalo->lambda;
+					
+					/** If virial velocity of halo (which is calculated from the total mass
+					    and redshift) is smaller than the virial velocity of the central subhalo, which is
+					    directly calculated in VELOCIraptor, then adopt the VELOCIraptor one.**/
+					if(halo->Vvir < halo->central_subhalo->Vvir){
+					        halo->Vvir = halo->central_subhalo->Vvir;
+					}
+
 				}
 		}
 		

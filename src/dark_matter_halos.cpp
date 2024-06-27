@@ -148,7 +148,7 @@ double DarkMatterHalos::subhalo_dynamical_time (Subhalo &subhalo, double z){
 		r = halo_virial_radius(subhalo.host_halo->Mvir, z);
 		v = subhalo.Vvir;
 	}
-	else if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0){
+	else if(subhalo.subhalo_type == Subhalo::SATELLITE && !subhalo.ascendants.empty()){
 		r = subhalo.rvir_infall;
 		v = subhalo.Vvir_infall;
 	}
@@ -177,7 +177,7 @@ float DarkMatterHalos::halo_lambda (const Subhalo &subhalo, float m, double z, d
 	double H0 = cosmology->hubble_parameter(z);
 	double lambda = subhalo.L.norm() / m * 1.5234153 / std::pow(constants::G * m, 0.666) * std::pow(H0,0.33);
 
-	if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0){
+	if(subhalo.subhalo_type == Subhalo::SATELLITE && !subhalo.ascendants.empty()){
 	        lambda = subhalo.L_infall.norm() / m * 1.5234153 / std::pow(constants::G * m, 0.666) * std::pow(H0,0.33);
 	}
 	else{
@@ -230,7 +230,7 @@ double DarkMatterHalos::disk_size_theory (Subhalo &subhalo, double z){
 		        Rvir = halo_virial_radius(subhalo.host_halo->Mvir, z);
 			lambda = subhalo.host_halo->lambda;
 		}
-		else if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0){
+		else if(subhalo.subhalo_type == Subhalo::SATELLITE && !subhalo.ascendants.empty()){
 		        Rvir = subhalo.rvir_infall;
 			lambda = subhalo.lambda_infall;
 		}
@@ -313,7 +313,7 @@ void DarkMatterHalos::cooling_gas_sAM(Subhalo &subhalo, double z){
 		        subhalo.cold_halo_gas.sAM = constants::SQRT2 * std::pow(constants::G,0.66) *
 			                                            subhalo.host_halo->lambda * std::pow(subhalo.host_halo->Mvir,0.66) / std::pow(H0,0.33);
 		}
-		else if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0){
+		else if(subhalo.subhalo_type == Subhalo::SATELLITE && !subhalo.ascendants.empty()){
 		        // Define Mvir at infall for satellite
 		        subhalo.cold_halo_gas.sAM = constants::SQRT2 * std::pow(constants::G,0.66) *
 			                                            subhalo.lambda_infall * std::pow(subhalo.Mvir_infall,0.66) / std::pow(H0,0.33);

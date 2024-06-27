@@ -78,6 +78,7 @@ void adjust_main_galaxy(const SubhaloPtr &parent, const SubhaloPtr &descendant)
 		main_galaxy->concentration_type2 = parent->concentration;
 		main_galaxy->msubhalo_type2 = parent->Mvir;
 		main_galaxy->lambda_type2 = parent->lambda;
+		main_galaxy->vvir_type2 = parent->Vvir;
 	}
 
 	// If main_galaxy is type 1 and the ram pressure stripping radius has not been defined, then define it to be equal to the descendant subhalo rvir_infall.
