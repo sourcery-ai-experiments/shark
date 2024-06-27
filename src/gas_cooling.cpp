@@ -354,11 +354,18 @@ double GasCooling::cooling_rate(Subhalo &subhalo, Galaxy &galaxy, double z, doub
 	}
 
 	//Assume hot halo has the same specific angular momentum of DM halo.
-	//NOTE: change calculation to use subhalo spin instead of L.
-	//NOTE: change to use different definitions for centrals/satellites. For centrals it should use the host halo properties and for satellites, the current subhalo properties.
-	subhalo.hot_halo_gas.sAM = subhalo.L.norm() / subhalo.Mvir;
-
-
+	// NOTE: change depending it is satellite or central
+	// NOTE: change using spin
+	if(subhalo.subhalo_type == Subhalo::CENTRAL){
+	         subhalo.hot_halo_gas.sAM = subhalo.L.norm() / subhalo.host_halo->Mvir;
+	}
+	else if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0){
+	         subhalo.hot_halo_gas.sAM = subhalo.L_infall.norm() / subhalo.Mvir_infall;
+	}
+	else{
+	         subhalo.hot_halo_gas.sAM = subhalo.L.norm() / subhalo.Mvir;
+	}
+	
 	/**
 	* We need to convert masses and velocities to physical units before proceeding with calculation.
 	*/
@@ -377,8 +384,9 @@ double GasCooling::cooling_rate(Subhalo &subhalo, Galaxy &galaxy, double z, doub
 	double fhot = mhot / subhalo.Mvir;
 
 	// If subhalo is a satellite, then use the virial velocity the subhalo had at infall.
-	if(subhalo.subhalo_type != Subhalo::CENTRAL){
-		vvir = darkmatterhalos->halo_virial_velocity(subhalo.Mvir_infall, subhalo.infall_t);
+	if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Vvir_infall != 0){
+	        vvir = subhalo.Vvir_infall;
+		fhot = mhot / subhalo.Mvir_infall;
 	}
 
 	double zhot = 0;
@@ -394,8 +402,9 @@ double GasCooling::cooling_rate(Subhalo &subhalo, Galaxy &galaxy, double z, doub
 	}
 
 	// If galaxy is central then redefine vmax according to subhalo Vmax.
+	// (using virial velocity since vmax from the catalogues can propagate numerical artefacts)
 	if(galaxy.galaxy_type == Galaxy::CENTRAL) {
-		galaxy.vmax  = subhalo.Vcirc;
+		galaxy.vmax  = subhalo.Vvir;
 	}
 
 	double Tvir   = 35.9 * std::pow(vvir,2.0); //in K.
@@ -403,11 +412,15 @@ double GasCooling::cooling_rate(Subhalo &subhalo, Galaxy &galaxy, double z, doub
 	double Rvir = 0;
 
 	if(subhalo.subhalo_type == Subhalo::CENTRAL){
-		Rvir = cosmology->comoving_to_physical_size(darkmatterhalos->halo_virial_radius(halo, z), z);//physical Mpc
+		Rvir = cosmology->comoving_to_physical_size(darkmatterhalos->halo_virial_radius(halo->Mvir, z), z);//physical Mpc
 	}
-	else {
+	else if (subhalo.subhalo_type == Subhalo::CENTRAL && subhalo.rvir_infall != 0){
 		//If subhalo is a satellite, then adopt virial radius at infall.
 		Rvir = cosmology->comoving_to_physical_size(subhalo.rvir_infall, z);//physical Mpc
+	}
+	else {
+		//If subhalo is a satellite born as satellite, then adopt current virial radius.
+		Rvir = cosmology->comoving_to_physical_size(darkmatterhalos->halo_virial_radius(subhalo.Mvir, z), z);//physical Mpc
 	}
 
 	/**

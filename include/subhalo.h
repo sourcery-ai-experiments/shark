@@ -240,6 +240,16 @@ public:
 	float rvir_infall = 0;
 	/// ram-pressurte tripping radius of the hot gas.
 	float hot_halo_gas_r_rps = 0;
+	/// halo concentration at infall_t.
+	float concentration_infall = 0;
+	/// halo spin parameter at infall_t.
+	float lambda_infall = 0;
+	/// halo virial velocity at infall_t.
+	float Vvir_infall = 0;
+	/// halo circular velocity at infall_t.
+	float Vcirc_infall = 0;
+	/// angular momentum of subhalo at infall [Msun/h km/s Mpc/h]
+	xyz<float> L_infall {0, 0, 0};
 	BaryonBase star_central_infall;
 	/// The accreted baryonic mass onto the subhalo. This information comes from the merger tree
 	float accreted_mass = 0;
@@ -275,7 +285,9 @@ public:
 	bool main_progenitor = false;
 	/// Whether this subhalo is the result of an interpolation in snapshots were descendants were missing. In this case Dhalos puts a subhalo in those snapshots  to ensure continuation of the merger tree.
 	bool IsInterpolated = false;
-
+        /// Whether this subhalo is a massive transients.
+        int transient = 0;
+  
 private:
 	void do_check_satellite_subhalo_galaxy_composition() const;
 	void do_check_central_subhalo_galaxy_composition() const;

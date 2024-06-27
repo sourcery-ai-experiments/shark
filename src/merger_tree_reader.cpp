@@ -46,8 +46,9 @@
 
 namespace shark {
 
-SURFSReader::SURFSReader(const std::string &prefix, DarkMatterHalosPtr dark_matter_halos, SimulationParameters simulation_params, unsigned int threads) :
-	prefix(prefix), dark_matter_halos(std::move(dark_matter_halos)), simulation_params(std::move(simulation_params)), threads(threads)
+SURFSReader::SURFSReader(const std::string &prefix, DarkMatterHalosPtr dark_matter_halos, SimulationParameters simulation_params, unsigned int threads,
+			 const std::string &transients_prefix) :
+        prefix(prefix), dark_matter_halos(std::move(dark_matter_halos)), simulation_params(std::move(simulation_params)), threads(threads), transients_prefix(transients_prefix)
 {
 	if (prefix.empty()) {
 		throw invalid_argument("Trees dir has no value");
@@ -62,6 +63,13 @@ const std::string SURFSReader::get_filename(unsigned int batch)
 	return os.str();
 }
 
+const std::string SURFSReader::get_transients_filename(unsigned int batch)
+{
+        std::ostringstream os;
+	os << transients_prefix << "." << batch << ".hdf5";
+	return os.str();
+}
+  
 const std::vector<HaloPtr> SURFSReader::read_halos(std::vector<unsigned int> batches)
 {
 
@@ -129,6 +137,16 @@ const std::vector<SubhaloPtr> SURFSReader::read_subhalos(unsigned int batch)
 	std::vector<int> IsCentre = batch_file.read_dataset_v<int>("haloTrees/isDHaloCentre");
 	std::vector<int> IsInterpolated = batch_file.read_dataset_v<int>("haloTrees/isInterpolated");
 
+	// Read transients file
+	std::vector<Subhalo::id_t> transientsIndex;
+
+	if (!transients_prefix.empty()){
+	        // read transients file
+	        const auto fname_transients = get_transients_filename(batch);
+		hdf5::Reader batch_transients(fname_transients);
+		transientsIndex = batch_transients.read_dataset_v<Subhalo::id_t>("nodeIndex");
+	}
+	  
 	auto n_subhalos = Mvir.size();
 	LOG(info) << "Read raw data of " << n_subhalos << " subhalos from " << fname << " in " << t;
 	if (n_subhalos == 0) {
@@ -215,22 +233,14 @@ const std::vector<SubhaloPtr> SURFSReader::read_subhalos(unsigned int batch)
 		subhalo->L.y = L[3 * i + 1];
 		subhalo->L.z = L[3 * i + 2];
 
+		//Assign circular velocity
 		subhalo->Vcirc = Vcirc[i];
 
-		auto z = simulation_params.redshifts[subhalo->snapshot];
-		subhalo->concentration = dark_matter_halos->nfw_concentration(subhalo->Mvir, z);
-
-		if (subhalo->concentration < 1) {
-			throw invalid_argument("concentration is <1, cannot continue. Please check input catalogue");
+		if (!transients_prefix.empty()){
+		        // create flag to indicate this subhalo is transient
+		        subhalo->transient = std::find(std::begin(transientsIndex), std::end(transientsIndex), nodeIndex[i]) != std::end(transientsIndex);
 		}
-
-		double npart = Mvir[i]/simulation_params.particle_mass;
-
-		subhalo->lambda = dark_matter_halos->halo_lambda(*subhalo, Mvir[i], z, npart);
-
-		// Calculate virial velocity from the virial mass and redshift.
-		subhalo->Vvir = dark_matter_halos->halo_virial_velocity(subhalo->Mvir, z);
-
+		
 		// Done, save it now
 		t_subhalos[thread_idx].emplace_back(std::move(subhalo));
 	});

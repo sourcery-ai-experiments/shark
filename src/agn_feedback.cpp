@@ -153,8 +153,11 @@ void AGNFeedback::plant_seed_smbh(Subhalo &subhalo){
 		if(subhalo.subhalo_type == Subhalo::CENTRAL){
 			mvir = subhalo.host_halo->Mvir;
 		}
-		else{
+		else if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall!=0){
 			mvir = subhalo.Mvir_infall;
+		}
+		else{
+		  mvir = subhalo.Mvir;
 		}
 		if (mvir > parameters.mhalo_seed && central->smbh.mass ==0){
 				central->smbh.mass = parameters.mseed;

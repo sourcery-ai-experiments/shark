@@ -23,6 +23,7 @@
 
 
 #include "environment.h"
+#include "halo.h"
 #include "subhalo.h"
 #include "galaxy.h"
 #include "cosmology.h"
@@ -260,7 +261,7 @@ void Environment::process_satellite_subhalo_environment(Subhalo &satellite_subha
 
 			// compute how much has been lost since galaxy infall
 			float ratio_sm = std::pow(2, 3.57) * std::pow(ratio_mass, 2.06) / std::pow( 1 + ratio_mass, 3.57);
-			lost_stellar.mass = (1 - ratio_sm) * satellite_subhalo.star_central_infall.mass;
+			lost_stellar.mass = ratio_sm * satellite_subhalo.type1_galaxy()->star_central_infall.mass;
 
 			if(lost_stellar.mass < 0){
 				lost_stellar.restore_baryon();
@@ -287,7 +288,7 @@ void Environment::process_satellite_subhalo_environment(Subhalo &satellite_subha
 				// is stars_tidal_stripped.mass>0 is because stripping should have occurred already.
 				if(satellite.stars_tidal_stripped.mass == 0){
 					// compute how much has been lost since galaxy infall
-					lost_stellar.mass = (1 - ratio_sm) * satellite.stellar_mass();
+				        lost_stellar.mass = ratio_sm * satellite.star_central_infall.mass;
 
 					lost_stellar = remove_tidal_stripped_stars(central_subhalo, satellite, lost_stellar);
 
@@ -326,7 +327,7 @@ BaryonBase Environment::remove_tidal_stripped_stars(SubhaloPtr &subhalo, Galaxy 
 			subhalo->mean_galaxy_making_stellar_halo += galaxy.stellar_mass() * lost_stellar.mass;
 
 			// strip first the disk of the galaxy and then the bulge:
-			if(lost_stellar.mass < galaxy.disk_stars.mass){
+			if(lost_stellar.mass <= galaxy.disk_stars.mass){
 				// in this case we strip material from the disk but not the bulge
 				float frac_lost = lost_stellar.mass/galaxy.disk_stars.mass;
 				lost_stellar.mass_metals = frac_lost * galaxy.disk_stars.mass_metals;
@@ -519,7 +520,7 @@ double Environment::ram_pressure(const SubhaloPtr &primary,
 	auto vrel = secondary.velocity - primary->velocity + hubble_flow;
 	auto vrel_norm = vrel.norm();
 
-	auto rvir_prim = darkmatterhalos->halo_virial_radius(primary->host_halo, z);
+	auto rvir_prim = darkmatterhalos->halo_virial_radius(primary->host_halo->Mvir, z);
 	auto rho_cen = primary->hot_halo_gas.mass / (shark::constants::PI4 * std::pow(rvir_prim,2) * rsat) / 1e18 ; //in Msun/pc^3
 
 	return rho_cen * std::pow(vrel_norm,2);
