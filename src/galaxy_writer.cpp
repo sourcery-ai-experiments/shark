@@ -50,13 +50,15 @@
 
 namespace shark {
 
-GalaxyWriter::GalaxyWriter(ExecutionParameters exec_params, CosmologicalParameters cosmo_params,  CosmologyPtr cosmology, DarkMatterHalosPtr darkmatterhalo, SimulationParameters sim_params, AGNFeedbackParameters agn_params):
+GalaxyWriter::GalaxyWriter(ExecutionParameters exec_params, CosmologicalParameters cosmo_params,  CosmologyPtr cosmology, DarkMatterHalosPtr darkmatterhalo,
+		SimulationParameters sim_params, AGNFeedbackParameters agn_params, AGNFeedbackPtr agn_feedback):
 	exec_params(std::move(exec_params)),
 	cosmo_params(std::move(cosmo_params)),
 	cosmology(std::move(cosmology)),
 	darkmatterhalo(std::move(darkmatterhalo)),
 	sim_params(std::move(sim_params)),
-	agn_params(std::move(agn_params))
+	agn_params(std::move(agn_params)),
+	agn_feedback(std::move(agn_feedback))
 {
 	//no-opt
 }
@@ -231,6 +233,8 @@ void HDF5GalaxyWriter::write_galaxies(hdf5::Writer &file, int snapshot, const st
 	vector<float> mBH_acc_hh;
 	vector<float> mBH_acc_sb;
 	vector<float> bh_spin;
+	vector<float> Lbol;
+	vector<float> Qjet;
 
 	vector<float> sfr_disk;
 	vector<float> sfr_burst;
@@ -292,6 +296,7 @@ void HDF5GalaxyWriter::write_galaxies(hdf5::Writer &file, int snapshot, const st
 	vector<float> halo_final_m;
 
 	vector<float> infall_time_subhalo;
+	vector<float> infall_time_subhalo_z0host;
 
 	vector<float> position_x;
 	vector<float> position_y;
@@ -359,6 +364,7 @@ void HDF5GalaxyWriter::write_galaxies(hdf5::Writer &file, int snapshot, const st
 
 			descendant_id.push_back(subhalo->descendant_id);
 			infall_time_subhalo.push_back(subhalo->infall_t);
+			infall_time_subhalo_z0host.push_back(subhalo->infall_t_z0host);
 
 			int m = 0;
 			if(subhalo->main_progenitor){
@@ -439,6 +445,11 @@ void HDF5GalaxyWriter::write_galaxies(hdf5::Writer &file, int snapshot, const st
 				mBH_acc_hh.push_back(galaxy.smbh.macc_hh);
 				mBH_acc_sb.push_back(galaxy.smbh.macc_sb);
 				bh_spin.push_back(galaxy.smbh.spin);
+				// compute bolometric and mechanical luminosities of the BH
+				auto lbol = agn_feedback->agn_bolometric_luminosity(galaxy.smbh, true);
+				auto lq = agn_feedback->agn_mechanical_luminosity(galaxy.smbh);
+				Lbol.push_back(lbol);
+				Qjet.push_back(lq);
 
 				// Sizes and specific angular momentum of disks and bulges.
 				rdisk_gas.push_back(galaxy.disk_gas.rscale);
@@ -653,6 +664,8 @@ void HDF5GalaxyWriter::write_galaxies(hdf5::Writer &file, int snapshot, const st
 	REPORT(mBH_acc_hh);
 	REPORT(mBH_acc_sb);
 	REPORT(bh_spin);
+	REPORT(Lbol);
+	REPORT(Qjet);
 	REPORT(sfr_disk);
 	REPORT(sfr_burst);
 	REPORT(sfr_burst_mergers);
@@ -756,6 +769,9 @@ void HDF5GalaxyWriter::write_galaxies(hdf5::Writer &file, int snapshot, const st
 
 	comment = "redshift at which the subhalo became a SATELLITE (only well defined for satellite subhalos)";
 	file.write_dataset("subhalo/infall_time_subhalo", infall_time_subhalo, comment);
+
+	comment = "redshift at which the subhalo became a SATELLITE of the host halo it has at the output time (only well defined for satellite subhalos)";
+	file.write_dataset("subhalo/infall_time_subhalo_current_host", infall_time_subhalo_z0host, comment);
 
 	//Subhalo AM vector
 	comment = "total angular momentum component x of subhalo [Msun pMpc km/s]. From VELOCIraptor.";
@@ -868,6 +884,12 @@ void HDF5GalaxyWriter::write_galaxies(hdf5::Writer &file, int snapshot, const st
 
 	comment = "black hole spin [dimensionless]";
 	file.write_dataset("galaxies/bh_spin", bh_spin, comment);
+
+	comment = "bolometric luminosity of the BH [1e40 erg/s]";
+	file.write_dataset("galaxies/bolometric_luminosity_agn", Lbol, comment);
+
+	comment = "mechanical jet power of the BH [1e40 erg/s]";
+	file.write_dataset("galaxies/mechanical_power_agn", Qjet, comment);
 
 	comment = "half-mass radius of the stellar disk [cMpc/h]";
 	file.write_dataset("galaxies/rstar_disk", rdisk_star, comment);

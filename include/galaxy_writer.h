@@ -54,7 +54,8 @@ public:
 			CosmologyPtr cosmology,
 			DarkMatterHalosPtr darkmatterhalo,
 			SimulationParameters sim_params,
-			AGNFeedbackParameters agn_params);
+			AGNFeedbackParameters agn_params,
+			AGNFeedbackPtr agn_feedback);
 	virtual ~GalaxyWriter() = default;
 
 	virtual void write(int snapshot, const std::vector<HaloPtr> &halos, TotalBaryon &AllBaryons, const molgas_per_galaxy &molgas_per_gal) = 0;
@@ -69,6 +70,7 @@ protected:
 	DarkMatterHalosPtr darkmatterhalo;
 	SimulationParameters sim_params;
 	AGNFeedbackParameters agn_params;
+	AGNFeedbackPtr agn_feedback;
 
 	std::string get_output_directory(int snapshot);
 };

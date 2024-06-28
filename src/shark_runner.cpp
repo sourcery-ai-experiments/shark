@@ -107,7 +107,9 @@ public:
 	    simulation_params(options), star_formation_params(options),
 	    cosmology(make_cosmology(cosmo_params)),
 	    dark_matter_halos(make_dark_matter_halos(dark_matter_halo_params, cosmology, simulation_params, exec_params)),
-	    writer(make_galaxy_writer(exec_params, cosmo_params, cosmology, dark_matter_halos, simulation_params, AGNFeedbackParameters(options))),
+	    agn_feedback_params(options),
+	    agn_feedback(make_agn_feedback(agn_feedback_params, cosmology, recycling_params, exec_params)),
+	    writer(make_galaxy_writer(exec_params, cosmo_params, cosmology, dark_matter_halos, simulation_params, agn_feedback_params, agn_feedback)),
 	    simulation(simulation_params, cosmology),
 	    star_formation(star_formation_params, recycling_params, cosmology)
 	{
@@ -135,6 +137,8 @@ private:
 	StarFormationParameters star_formation_params;
 	CosmologyPtr cosmology;
 	DarkMatterHalosPtr dark_matter_halos;
+	AGNFeedbackParameters agn_feedback_params;
+	AGNFeedbackPtr agn_feedback;
 	GalaxyWriterPtr writer;
 	Simulation simulation;
 	StarFormation star_formation;

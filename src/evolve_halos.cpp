@@ -44,6 +44,12 @@ void adjust_main_galaxy(const SubhaloPtr &parent, const SubhaloPtr &descendant)
 	auto is_main_progenitor = parent->main_progenitor;
 	auto main_galaxy = (parent_is_central ? parent->central_galaxy() : parent->type1_galaxy());
 
+	//check the fate of the central subhalo of the host halo if the current halo is a satellite
+	auto central_subhalo_is_satellite = parent->host_halo->central_subhalo->descendant->subhalo_type == Subhalo::SATELLITE;
+	if(central_subhalo_is_satellite && !desc_is_central){
+		descendant->infall_t_z0host =  descendant->snapshot;
+	}
+
 	// Define the stellar content of the central at the moment of infall. So this applies only to subhalos that are currently central but will become
 	// satellite in the next snapshot. In this case also transfer stellar halo of the subhalo to the main progenitor subhalo.
 	if(parent_is_central && !desc_is_central){

@@ -588,37 +588,43 @@ void GalaxyMergers::create_starbursts(HaloPtr &halo, double z, double delta_t){
 		for (auto &galaxy: subhalo->galaxies){
 			// Trigger starburst only in case there is gas in the bulge.
 			if(galaxy.bulge_gas.mass > parameters.mass_min){
-
-				// Calculate black hole growth due to starburst.
-				double tdyn = agnfeedback->smbh_accretion_timescale(galaxy, z);
 				double delta_mbh = 0;
 				double delta_mzbh = 0;
 
-				if(subhalo->subhalo_type == Subhalo::SATELLITE && subhalo->Vvir_infall != 0){
-				        // at infall for subhalos that become satellite
-				        delta_mbh = agnfeedback->smbh_growth_starburst(galaxy.bulge_gas.mass, subhalo->Vvir_infall, tdyn, galaxy);
-				}
-				else{
-				        delta_mbh = agnfeedback->smbh_growth_starburst(galaxy.bulge_gas.mass, subhalo->Vvir, tdyn, galaxy);
-				}
+				// grow the BH only if its mass is already >  0 (so the BH has been seeded).
+				if(galaxy.smbh.mass > 0){
+					// Calculate black hole growth due to starburst.
+					double tdyn = agnfeedback->smbh_accretion_timescale(galaxy, z);
 
-				if(galaxy.bulge_gas.mass > 0){
-					delta_mzbh = delta_mbh/galaxy.bulge_gas.mass * galaxy.bulge_gas.mass_metals;
+
+					delta_mbh = agnfeedback->smbh_growth_starburst(galaxy.bulge_gas.mass, subhalo->Vvir, tdyn, galaxy);
+					if(subhalo->subhalo_type == Subhalo::SATELLITE && subhalo->Vvir_infall != 0 &&
+							dark_matter_params.apply_fix_to_mass_swapping_events){
+						// at infall for subhalos that become satellite
+						delta_mbh = agnfeedback->smbh_growth_starburst(galaxy.bulge_gas.mass, subhalo->Vvir_infall, tdyn, galaxy);
+					}
+
+					if(galaxy.bulge_gas.mass > 0){
+						delta_mzbh = delta_mbh/galaxy.bulge_gas.mass * galaxy.bulge_gas.mass_metals;
+					}
+
+					// Define accretion rate.
+					galaxy.smbh.macc_sb += delta_mbh/tdyn;
+
+					// Reduce gas available for star formation due to black hole growth.
+					galaxy.bulge_gas.mass -= delta_mbh;
+					galaxy.bulge_gas.mass_metals -= delta_mzbh;
 				}
-
-				// Define accretion rate.
-				galaxy.smbh.macc_sb += delta_mbh/tdyn;
-
-				// Reduce gas available for star formation due to black hole growth.
-				galaxy.bulge_gas.mass -= delta_mbh;
-				galaxy.bulge_gas.mass_metals -= delta_mzbh;
 
 				// Trigger starburst.
 				physicalmodel->evolve_galaxy_starburst(*subhalo, galaxy, z, delta_t, dark_matter_params.apply_fix_to_mass_swapping_events, true);
 
-				// Grow SMBH after starbursts, as during it we need a realistical measurement of Ledd the BH had before the starburst.
-				galaxy.smbh.mass += delta_mbh;
-				galaxy.smbh.mass_metals += delta_mzbh;
+				// grow the BH only if its mass is already >  0 (so the BH has been seeded).
+				if(galaxy.smbh.mass > 0){
+					// Grow SMBH after starbursts, as during it we need a realistical measurement of Ledd the BH had before the starburst.
+					galaxy.smbh.mass += delta_mbh;
+					galaxy.smbh.mass_metals += delta_mzbh;
+				}
 
 				// Check for small gas reservoirs left in the bulge, in case mass is small, transfer to disk.
 				if(galaxy.bulge_gas.mass > 0 && galaxy.bulge_gas.mass < parameters.mass_min){
