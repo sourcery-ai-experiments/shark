@@ -569,10 +569,16 @@ void TreeBuilder::define_properties_satellite_subhalos(const std::vector<MergerT
 				for(auto &halo: tree->halos_at(snapshot)){
 					for(auto &subhalo: halo->all_subhalos()){
 						if(subhalo->subhalo_type == Subhalo::SATELLITE){
-							// in the case of satellite subhalos, we use the virial mass of its host at the time of infall, and the time of infall
+
+							double mvir = subhalo->Mvir;
+							double z = sim_params.redshifts[subhalo->snapshot];
+
+							// in the case of satellite subhalos with a well defined infall mass, we use the virial mass of its host at the time of infall, and the time of infall
 							// to define other properties.
-							double mvir = subhalo->Mvir_infall;
-							double z = sim_params.redshifts[subhalo->infall_t];
+							if(subhalo->Mvir_infall > 0){
+								mvir = subhalo->Mvir_infall;
+								z = subhalo->infall_t;
+							}
 
 							double npart = mvir/sim_params.particle_mass;
 

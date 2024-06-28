@@ -364,7 +364,7 @@ void HDF5GalaxyWriter::write_galaxies(hdf5::Writer &file, int snapshot, const st
 
 			descendant_id.push_back(subhalo->descendant_id);
 			infall_time_subhalo.push_back(subhalo->infall_t);
-			infall_time_subhalo_z0host.push_back(subhalo->infall_t_z0host);
+			infall_time_subhalo_z0host.push_back(sim_params.redshifts[subhalo->infall_t_z0host]);
 
 			int m = 0;
 			if(subhalo->main_progenitor){

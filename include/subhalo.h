@@ -234,7 +234,7 @@ public:
 	float lambda = 0;
 	/// redshift at which the subhalo became a type > 0.
 	float infall_t = 0;
-	/// redshift at which the subhalo became a satellite of its z=0 host.
+	/// snapshot at which the subhalo became a satellite of its z=0 host.
 	float infall_t_z0host = 0;
 	/// halo mass and stellar mass of central galaxy at infall_t.
 	float Mvir_infall = 0;
