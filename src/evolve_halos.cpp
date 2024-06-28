@@ -159,6 +159,8 @@ void transfer_galaxies_to_next_snapshot(const std::vector<HaloPtr> &halos, int s
 			descendant_subhalo->star_central_infall = subhalo->star_central_infall;
 			descendant_subhalo->stellar_halo += subhalo->stellar_halo;
 			descendant_subhalo->mean_galaxy_making_stellar_halo += subhalo->mean_galaxy_making_stellar_halo;
+			descendant_subhalo->hot_halo_gas_stripped += subhalo->hot_halo_gas_stripped;
+			descendant_subhalo->hot_halo_gas_r_rps = subhalo->hot_halo_gas_r_rps;
 
 			// Track halo cooling and its properties.
 			if (subhalo->main_progenitor) {
