@@ -21,6 +21,7 @@
 * ``bh_accretion_rate_hh``: accretion rate onto the black hole during the hot halo mode [Msun/Gyr/h]
 * ``bh_accretion_rate_sb``: accretion rate onto the black hole during the starburst mode [Msun/Gyr/h]
 * ``bh_spin``: black hole spin [dimensionless]
+* ``bolometric_luminosity_agn``: bolometric luminosity of the BH [1e40 erg/s]
 * ``cnfw_subhalo``: NFW concentration parameter of the dark matter subhalo in which this galaxy resides [dimensionless]. In the case of type 2 satellites, this corresponds to the concentration its subhalo had before disappearing from the subhalo catalogs.
 * ``cooling_rate``: cooling rate of the hot halo component [Msun/Gyr/h].
 * ``descendant_id_galaxy``: descendant galaxy ID. Different to galaxy id only if galaxy is type 2 and merges on the next snapshot.
@@ -39,6 +40,7 @@
 * ``matom_disk``: atomic gas mass (helium plus hydrogen) in the disk [Msun/h]
 * ``mean_mstellar_galaxies_stellarhalo``: mass weighted stellar mass of the galaxies that contributed to building the stellar halo [Msun/h]
 * ``mean_stellar_age``: stellar mass-weighted stellar age [Gyr]
+* ``mechanical_power_agn``: mechanical jet power of the BH [1e40 erg/s]
 * ``mgas_bulge``: gas mass in the bulge [Msun/h]
 * ``mgas_disk``: total gas mass in the disk [Msun/h]
 * ``mgas_metals_bulge``: mass of metals locked in the gas of the bulge [Msun/h]
@@ -173,7 +175,9 @@
 * ``host_id``: id of the host halo of this subhalo
 * ``id``: Subhalo id
 * ``infall_time_subhalo``: redshift at which the subhalo became a SATELLITE (only well defined for satellite subhalos)
+* ``infall_time_subhalo_current_host``: redshift at which the subhalo became a SATELLITE of the host halo it has at the output time (only well defined for satellite subhalos)
 * ``l_x``: total angular momentum component x of subhalo [Msun pMpc km/s]. From VELOCIraptor.
 * ``l_y``: total angular momentum component y of galaxy [Msun pMpc km/s]. From VELOCIraptor.
 * ``l_z``: total angular momentum component z of galaxy [Msun pMpc km/s]. From VELOCIraptor.
 * ``main_progenitor``: =1 if subhalo is the main progenitor' =0 otherwise.
+
