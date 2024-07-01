@@ -208,7 +208,7 @@ void TreeBuilder::link(const SubhaloPtr &parent_shalo, const SubhaloPtr &desc_su
 }
 
 SubhaloPtr TreeBuilder::define_central_subhalo(HaloPtr &halo, SubhaloPtr &subhalo, SimulationParameters &sim_params,
-		DarkMatterHaloParameters &dark_matter_params, DarkMatterHalosPtr &darkmatterhalos)
+		DarkMatterHaloParameters &dark_matter_params, const DarkMatterHalosPtr &darkmatterhalos)
 {
 	// point central subhalo to this subhalo.
 	halo->central_subhalo = subhalo;
@@ -250,7 +250,7 @@ SubhaloPtr TreeBuilder::define_central_subhalo(HaloPtr &halo, SubhaloPtr &subhal
 }
 
 void TreeBuilder::define_central_subhalos(const std::vector<MergerTreePtr> &trees, SimulationParameters &sim_params, DarkMatterHaloParameters &dark_matter_params,
-		DarkMatterHalosPtr &darkmatterhalos){
+		const DarkMatterHalosPtr &darkmatterhalos){
 
 	//This function loops over merger trees and halos to define central galaxies in a self-consistent way. The loop starts at z=0.
 
