@@ -161,30 +161,27 @@ std::vector<MergerTreePtr> TreeBuilder::build_trees(std::vector<HaloPtr> &halos,
 
 	// Define central subhalos
 	LOG(info) << "Defining central subhalos";
-	define_central_subhalos(trees, sim_params, dark_matter_params);
+	define_central_subhalos(trees, sim_params, dark_matter_params, darkmatterhalos);
 
-	if(dark_matter_params.apply_fix_to_mass_swapping_events){
+	/*if(dark_matter_params.apply_fix_to_mass_swapping_events){
 		// Function to redefine central subhalo properties from host halo
 		LOG(info) << "Defining velocity, concentration and lambda of central subhalos";
 		define_properties_central_subhalos(trees, sim_params, dark_matter_params, darkmatterhalos);
-	}
+	}*/
 
 	// Define accretion rate from DM in case we want this.
 	LOG(info) << "Defining accretion rate using cosmology";
 	define_accretion_rate_from_dm(trees, sim_params, gas_cooling_params, *cosmology, AllBaryons);
 
-	//a new function which redefines central subhalo properties based on halo Mvir
-	//
-
 	// Define halo and subhalos ages and other relevant properties
 	LOG(info) << "Defining ages of halos and subhalos";
 	define_ages_halos(trees, sim_params, darkmatterhalos);
 
-	if(dark_matter_params.apply_fix_to_mass_swapping_events){
+	/*if(dark_matter_params.apply_fix_to_mass_swapping_events){
 		// Function to redefine satellite subhalo properties with properties at infall
 		LOG(info) << "Defining velocity, concentration and lambda of satellite subhalos";
 		define_properties_satellite_subhalos(trees, sim_params, darkmatterhalos);
-	}
+	}*/
 
 	return trees;
 }
@@ -210,16 +207,32 @@ void TreeBuilder::link(const SubhaloPtr &parent_shalo, const SubhaloPtr &desc_su
 	add_parent(desc_halo, parent_halo);
 }
 
-SubhaloPtr TreeBuilder::define_central_subhalo(HaloPtr &halo, SubhaloPtr &subhalo)
+SubhaloPtr TreeBuilder::define_central_subhalo(HaloPtr &halo, SubhaloPtr &subhalo, SimulationParameters &sim_params,
+		DarkMatterHaloParameters &dark_matter_params, DarkMatterHalosPtr &darkmatterhalos)
 {
 	// point central subhalo to this subhalo.
 	halo->central_subhalo = subhalo;
 	halo->position = subhalo->position;
 	halo->velocity = subhalo->velocity;
 
+
+	// calculate subhalo properties based on halo mass if number of particles is too small or in the case of applying the fix to mass swapping events:
+	if(dark_matter_params.apply_fix_to_mass_swapping_events){
+		double mvir = halo->Mvir;
+		double z= sim_params.redshifts[subhalo->snapshot];
+		double npart = mvir/sim_params.particle_mass;
+
+		subhalo->concentration = darkmatterhalos->nfw_concentration(mvir, z);
+
+		if (subhalo->concentration < 1) {
+			throw invalid_argument("concentration is <1, cannot continue. Please check input catalogue");
+		}
+		subhalo->lambda = darkmatterhalos->halo_lambda(*subhalo, mvir, z, npart);
+		subhalo->Vvir = darkmatterhalos->halo_virial_velocity(mvir, z);
+	}
+
 	halo->concentration = subhalo->concentration;
 	halo->lambda = subhalo->lambda;
-
 	/** If virial velocity of halo (which is calculated from the total mass
 	and redshift) is smaller than the virial velocity of the central subhalo, which is
 	directly calculated in VELOCIraptor, then adopt the VELOCIraptor one.**/
@@ -236,7 +249,8 @@ SubhaloPtr TreeBuilder::define_central_subhalo(HaloPtr &halo, SubhaloPtr &subhal
 	return subhalo;
 }
 
-void TreeBuilder::define_central_subhalos(const std::vector<MergerTreePtr> &trees, SimulationParameters &sim_params, DarkMatterHaloParameters &dark_matter_params){
+void TreeBuilder::define_central_subhalos(const std::vector<MergerTreePtr> &trees, SimulationParameters &sim_params, DarkMatterHaloParameters &dark_matter_params,
+		DarkMatterHalosPtr &darkmatterhalos){
 
 	//This function loops over merger trees and halos to define central galaxies in a self-consistent way. The loop starts at z=0.
 
@@ -252,7 +266,7 @@ void TreeBuilder::define_central_subhalos(const std::vector<MergerTreePtr> &tree
 				}
 
 				auto central_subhalo = halo->all_subhalos()[0];
-				auto subhalo = define_central_subhalo(halo, central_subhalo);
+				auto subhalo = define_central_subhalo(halo, central_subhalo, sim_params, dark_matter_params, darkmatterhalos);
 
 				// save value of lambda to make sure that all main progenitors of this subhalo have the same lambda value. This is done for consistency 
 				// throughout time.
@@ -296,7 +310,7 @@ void TreeBuilder::define_central_subhalos(const std::vector<MergerTreePtr> &tree
 					if (!dark_matter_params.use_converged_lambda_catalog || (dark_matter_params.use_converged_lambda_catalog && main_prog->Mvir/sim_params.particle_mass < dark_matter_params.min_part_convergence)) {
 						main_prog->lambda = lambda;
 					}
-					subhalo = define_central_subhalo(ascendant_halo, main_prog);
+					subhalo = define_central_subhalo(ascendant_halo, main_prog, sim_params, dark_matter_params, darkmatterhalos);
 
 					// Define property last_identified_snapshot for all the ascendants that are not the main progenitor of the subhalo.
 					for (auto &sub: ascendants) {
@@ -516,23 +530,25 @@ void TreeBuilder::define_properties_central_subhalos(const std::vector<MergerTre
 		for(auto &tree: trees) {
 			for(int snapshot=sim_params.max_snapshot; snapshot >= sim_params.min_snapshot; snapshot--) {
 				for(auto &halo: tree->halos_at(snapshot)){
-					for(auto &subhalo: halo->all_subhalos()){
-						// Calculate different properties: concentration, Vvir and lambda
-						if(subhalo->subhalo_type == Subhalo::CENTRAL){
-							double mvir = halo->Mvir;
-							double z= sim_params.redshifts[subhalo->snapshot];
-							double npart = mvir/sim_params.particle_mass;
 
-							subhalo->concentration = darkmatterhalos->nfw_concentration(mvir, z);
+					auto subhalo = halo->central_subhalo;
+					// Calculate different properties: concentration, Vvir and lambda
+					double mvir = halo->Mvir;
+					double z= sim_params.redshifts[subhalo->snapshot];
+					double npart = mvir/sim_params.particle_mass;
 
-							if (subhalo->concentration < 1) {
-								throw invalid_argument("concentration is <1, cannot continue. Please check input catalogue");
-							}
-							subhalo->lambda = darkmatterhalos->halo_lambda(*subhalo, mvir, z, npart);
-							subhalo->Vvir = darkmatterhalos->halo_virial_velocity(mvir, z);
-						}
+					subhalo->concentration = darkmatterhalos->nfw_concentration(mvir, z);
+
+					if (subhalo->concentration < 1) {
+						throw invalid_argument("concentration is <1, cannot continue. Please check input catalogue");
 					}
+					subhalo->lambda = darkmatterhalos->halo_lambda(*subhalo, mvir, z, npart);
+					subhalo->Vvir = darkmatterhalos->halo_virial_velocity(mvir, z);
 
+					//redefine halo properties based on new calculated central subhalo properties:
+					halo->concentration = subhalo->concentration;
+					halo->lambda = subhalo->lambda;
+					halo->Vvir = subhalo->Vvir;
 			}
 		}
 	}
