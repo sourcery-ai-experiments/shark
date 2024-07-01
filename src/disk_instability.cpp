@@ -188,11 +188,14 @@ void DiskInstability::create_starburst(SubhaloPtr &subhalo, Galaxy &galaxy, doub
 		// grow the BH only if its mass is already >  0 (so the BH has been seeded).
 		if(galaxy.smbh.mass > 0){
 			delta_mbh = agnfeedback->smbh_growth_starburst(galaxy.bulge_gas.mass, subhalo->Vvir, tdyn, galaxy);
-			if(subhalo->subhalo_type == Subhalo::SATELLITE && subhalo->Vvir_infall != 0 &&
+			if(subhalo->subhalo_type == Subhalo::SATELLITE && !subhalo->ascendants.empty() &&
 					darkmatterparams.apply_fix_to_mass_swapping_events){
 				// at infall for subhalos that become satellite
 				delta_mbh = agnfeedback->smbh_growth_starburst(galaxy.bulge_gas.mass, subhalo->Vvir_infall, tdyn, galaxy);
 			}
+
+		}
+		if(galaxy.bulge_gas.mass > 0){
 
 			delta_mzbh = delta_mbh/galaxy.bulge_gas.mass * galaxy.bulge_gas.mass_metals;
 

@@ -358,7 +358,7 @@ double GasCooling::cooling_rate(Subhalo &subhalo, Galaxy &galaxy, double z, doub
 	// NOTE: change using spin
 	subhalo.hot_halo_gas.sAM = subhalo.L.norm() / subhalo.Mvir;
 
-	if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0){
+	if(subhalo.subhalo_type == Subhalo::SATELLITE && !subhalo.ascendants.empty()){
 		subhalo.hot_halo_gas.sAM = subhalo.L_infall.norm() / subhalo.Mvir_infall;
 	}
 	
@@ -381,7 +381,7 @@ double GasCooling::cooling_rate(Subhalo &subhalo, Galaxy &galaxy, double z, doub
 	double fhot = mhot / subhalo.Mvir;
 
 	// If subhalo is a satellite, then use the virial velocity the subhalo had at infall.
-	if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Vvir_infall != 0){
+	if(subhalo.subhalo_type == Subhalo::SATELLITE && !subhalo.ascendants.empty()){
 		vvir = subhalo.Vvir_infall;
 	}
 
@@ -410,7 +410,7 @@ double GasCooling::cooling_rate(Subhalo &subhalo, Galaxy &galaxy, double z, doub
 	if(subhalo.subhalo_type == Subhalo::CENTRAL){
 		Rvir = cosmology->comoving_to_physical_size(darkmatterhalos->halo_virial_radius(halo->Mvir, z), z);//physical Mpc
 	}
-	else if (subhalo.subhalo_type == Subhalo::CENTRAL && subhalo.rvir_infall != 0){
+	else if (subhalo.subhalo_type == Subhalo::CENTRAL && !subhalo.ascendants.empty()){
 		//If subhalo is a satellite, then adopt virial radius at infall.
 		Rvir = cosmology->comoving_to_physical_size(subhalo.rvir_infall, z);//physical Mpc
 	}
