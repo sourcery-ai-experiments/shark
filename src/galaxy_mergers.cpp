@@ -596,11 +596,13 @@ void GalaxyMergers::create_starbursts(HaloPtr &halo, double z, double delta_t){
 					// Calculate black hole growth due to starburst.
 					double tdyn = agnfeedback->smbh_accretion_timescale(galaxy, z);
 
-					delta_mbh = agnfeedback->smbh_growth_starburst(galaxy.bulge_gas.mass, subhalo->Vvir, tdyn, galaxy);
 					if(subhalo->subhalo_type == Subhalo::SATELLITE && subhalo->Vvir_infall != 0 &&
 							dark_matter_params.apply_fix_to_mass_swapping_events){
 						// at infall for subhalos that become satellite
 						delta_mbh = agnfeedback->smbh_growth_starburst(galaxy.bulge_gas.mass, subhalo->Vvir_infall, tdyn, galaxy);
+					}
+					else{
+						delta_mbh = agnfeedback->smbh_growth_starburst(galaxy.bulge_gas.mass, subhalo->Vvir, tdyn, galaxy);
 					}
 
 					if(galaxy.bulge_gas.mass > 0){
