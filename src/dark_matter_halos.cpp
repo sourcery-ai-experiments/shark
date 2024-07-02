@@ -369,17 +369,40 @@ float DarkMatterHalos::enclosed_total_mass(const Subhalo &subhalo, double z, flo
 	double rvir = 0;
 	double concentration = 0;
 
-	galaxy = subhalo.type1_galaxy();
-
 	if(	params.apply_fix_to_mass_swapping_events){
-		// Define infall Mvir, Rvir for satellites
-		// since this is to compute the ram pressure stripping
-		// for type1 galaxies, we use the information at infall
-		mvir = subhalo.Mvir_infall;
-		rvir = halo_virial_radius(subhalo.Mvir_infall, subhalo.infall_t);
-		concentration = subhalo.concentration_infall;
+	        if(subhalo.subhalo_type == Subhalo::CENTRAL){
+		        galaxy = subhalo.central_galaxy();
+		        // Define Mvir, Rvir from host halo
+		        mvir = subhalo.host_halo->Mvir;
+			rvir = halo_virial_radius(subhalo.host_halo->Mvir, z);
+			concentration = subhalo.host_halo->concentration_infall;
+		}
+	        else if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0){
+		        galaxy = subhalo.type1_galaxy();
+		        // Define infall Mvir, Rvir for satellites
+		        // since this is to compute the ram pressure stripping
+		        // for type1 galaxies, we use the information at infall
+		        mvir = subhalo.Mvir_infall;
+			rvir = halo_virial_radius(subhalo.Mvir_infall, subhalo.infall_t);
+			concentration = subhalo.concentration_infall;
+		}
+		else{
+		        galaxy = subhalo.type1_galaxy();
+		        // Define current  Mvir, Rvir for satellites born as satellites
+		        // since this is to compute the ram pressure stripping
+		        // for type1 galaxies, we use the information at infall
+		        mvir = subhalo.Mvir;
+			rvir = halo_virial_radius(subhalo.Mvir, z);
+			concentration = subhalo.concentration_infall;
+		}
 	}
 	else{
+	        if(subhalo.subhalo_type == Subhalo::CENTRAL){
+		        galaxy = subhalo.central_galaxy();
+		}
+	        else{
+		        galaxy = subhalo.type1_galaxy();
+		}
 		mvir = subhalo.Mvir;
 		rvir = halo_virial_radius(subhalo.Mvir, z);
 		concentration = subhalo.concentration;
