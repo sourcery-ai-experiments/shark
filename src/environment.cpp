@@ -93,7 +93,7 @@ void Environment::process_satellite_subhalo_environment(Subhalo &satellite_subha
 	}
 
 	if(parameters.stripping && satellite_subhalo.infall_t != z){
-		// If I'm computing gradial ram pressure stripping of any form, then compute the ram pressure the satellite feels.
+		// If I'm computing gradual ram pressure stripping of any form, then compute the ram pressure the satellite feels.
 		if(parameters.gradual_stripping_halo || parameters.gradual_stripping_ism){
 			ram_press = ram_pressure(central_subhalo, satellite_subhalo, z);
 		}
@@ -248,7 +248,7 @@ void Environment::process_satellite_subhalo_environment(Subhalo &satellite_subha
 		// mass in metals to be tidally stripped is computed inside the function remove_tidal_stripped_stars.
 		BaryonBase lost_stellar;
 
-		if(satellite_subhalo.type1_galaxy()){
+		if(satellite_subhalo.type1_galaxy() && satellite_subhalo.Mvir_infall > 0){
 			// Apply here model of Errani et al. (2015) with rstar/a=0.2.
 			float ratio_mass = satellite_subhalo.Mvir / satellite_subhalo.Mvir_infall;
 			// Apply a maximum stripping of 99% in halo mass and on the other and a maximum of 1 in the ratio..
@@ -475,9 +475,18 @@ double Environment::ram_pressure_stripping_hot_gas(const SubhaloPtr &primary,
 
 	// Here use the sum of the current hot halo gas plus what has been stripped. This assumed that the density of gas is only affected by cooling
 	// and not ram pressure stripping.
+
+	float rvir = 0;
+	if (secondary.rvir_infall > 0){
+		rvir = secondary.rvir_infall;
+	}
+	else{
+		rvir = darkmatterhalos->halo_virial_radius(secondary.Mvir, z);
+	}
+
 	auto enc_mass = darkmatterhalos->enclosed_total_mass(secondary, z, r);
 	double func = parameters.alpha_rps_halo * shark::constants::G * enc_mass *
-			(secondary.hot_halo_gas.mass + secondary.hot_halo_gas_stripped.mass) / (8 * secondary.rvir_infall * std::pow(r,3)) / 1e18 -
+			(secondary.hot_halo_gas.mass + secondary.hot_halo_gas_stripped.mass) / (8 * rvir * std::pow(r,3)) / 1e18 -
 			ram_press;
 
 	return func;
