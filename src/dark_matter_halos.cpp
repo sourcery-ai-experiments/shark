@@ -157,7 +157,7 @@ double DarkMatterHalos::subhalo_dynamical_time (Subhalo &subhalo, double z){
 	else{
 		// When the satellite is born as satellite (no infall properties) or
 		// when we don't to apply the fix to mass swapping events
-		r = halo_virial_radius(subhalo.Mvir, z);;
+		r = halo_virial_radius(subhalo.Mvir, z);
 		v = subhalo.Vvir;
 	}
 
