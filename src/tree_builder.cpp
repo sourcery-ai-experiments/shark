@@ -233,8 +233,7 @@ SubhaloPtr TreeBuilder::define_central_subhalo(HaloPtr &halo, SubhaloPtr &subhal
 	subhalo->lambda = darkmatterhalos->halo_lambda(*subhalo, mvir, z, npart);
 	subhalo->Vvir = darkmatterhalos->halo_virial_velocity(mvir, z);
 
-        // it seems redundant when the concentration has been computed before
-	//halo->concentration = subhalo->concentration;
+	halo->concentration = subhalo->concentration;
 	halo->lambda = subhalo->lambda;
 
 	/** If virial velocity of halo (which is calculated from the total mass
