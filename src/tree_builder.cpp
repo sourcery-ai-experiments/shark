@@ -177,11 +177,11 @@ std::vector<MergerTreePtr> TreeBuilder::build_trees(std::vector<HaloPtr> &halos,
 	LOG(info) << "Defining ages of halos and subhalos";
 	define_ages_halos(trees, sim_params, darkmatterhalos);
 
-	if(dark_matter_params.apply_fix_to_mass_swapping_events){
+	/*if(dark_matter_params.apply_fix_to_mass_swapping_events){
 		// Function to redefine satellite subhalo properties with properties at infall
 		LOG(info) << "Defining velocity, concentration and lambda of satellite subhalos";
 		define_properties_satellite_subhalos(trees, sim_params, darkmatterhalos);
-	}
+	}*/
 
 	return trees;
 }
@@ -595,12 +595,12 @@ void TreeBuilder::define_properties_satellite_subhalos(const std::vector<MergerT
 							double mvir = subhalo->Mvir;
 							double z = sim_params.redshifts[subhalo->snapshot];
 
-//							// in the case of satellite subhalos with a well defined infall mass, we use the virial mass of its host at the time of infall, and the time of infall
-//							// to define other properties.
-//							if(subhalo->Mvir_infall > 0){
-//								mvir = subhalo->Mvir_infall;
-//								z = subhalo->infall_t;
-//							}
+							// in the case of satellite subhalos with a well defined infall mass, we use the virial mass of its host at the time of infall, and the time of infall
+							// to define other properties.
+							if(subhalo->Mvir_infall > 0){
+								mvir = subhalo->Mvir_infall;
+								z = subhalo->infall_t;
+							}
 
 							double npart = mvir/sim_params.particle_mass;
 

@@ -134,11 +134,13 @@ Options::get<AGNFeedbackParameters::AccretionDiskModel>(const std::string &name,
 	throw invalid_option(os.str());
 }
 
-AGNFeedback::AGNFeedback(const AGNFeedbackParameters &parameters, CosmologyPtr cosmology, RecyclingParameters recycle_params, ExecutionParameters exec_params) :
+  AGNFeedback::AGNFeedback(const AGNFeedbackParameters &parameters, CosmologyPtr cosmology, RecyclingParameters recycle_params, ExecutionParameters exec_params,
+			   DarkMatterHaloParameters dark_matter_params) :
 	parameters(parameters),
 	cosmology(std::move(cosmology)),
 	recycle_params(std::move(recycle_params)),
 	exec_params(std::move(exec_params)),
+	dark_matter_params(dark_matter_params),
 	distribution(-1, 1)
 {
 	// no-op
@@ -150,14 +152,16 @@ void AGNFeedback::plant_seed_smbh(Subhalo &subhalo){
 
 	if(central){
 		float mvir = 0;
-		if(subhalo.subhalo_type == Subhalo::CENTRAL){
+		if(subhalo.subhalo_type == Subhalo::CENTRAL &&
+		               dark_matter_params.apply_fix_to_mass_swapping_events){
 			mvir = subhalo.host_halo->Mvir;
 		}
-		else if(subhalo.subhalo_type == Subhalo::SATELLITE && !subhalo.ascendants.empty()){
+		else if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0 &&
+			       dark_matter_params.apply_fix_to_mass_swapping_events){
 			mvir = subhalo.Mvir_infall;
 		}
 		else{
-		  mvir = subhalo.Mvir;
+		        mvir = subhalo.Mvir;
 		}
 		if (mvir > parameters.mhalo_seed && central->smbh.mass ==0){
 				central->smbh.mass = parameters.mseed;

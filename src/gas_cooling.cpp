@@ -218,6 +218,7 @@ GasCooling::GasCooling(GasCoolingParameters parameters,
 		ReionisationPtr reionisation,
 		CosmologyPtr cosmology,
 		AGNFeedbackPtr agnfeedback,
+		DarkMatterHaloParameters dark_matter_params,
 		DarkMatterHalosPtr darkmatterhalos,
 		ReincorporationPtr reincorporation,
 		EnvironmentPtr environment) :
@@ -227,6 +228,7 @@ GasCooling::GasCooling(GasCoolingParameters parameters,
 	reionisation(std::move(reionisation)),
 	cosmology(std::move(cosmology)),
 	agnfeedback(std::move(agnfeedback)),
+	dark_matter_params(dark_matter_params),
 	darkmatterhalos(std::move(darkmatterhalos)),
 	reincorporation(std::move(reincorporation)),
 	environment(std::move(environment)),
@@ -353,13 +355,19 @@ double GasCooling::cooling_rate(Subhalo &subhalo, Galaxy &galaxy, double z, doub
 		return 0;
 	}
 
-	//Assume hot halo has the same specific angular momentum of DM halo.
-	// NOTE: change depending it is satellite or central
+	// Assume hot halo has the same specific angular momentum of DM halo.
 	// NOTE: change using spin
-	subhalo.hot_halo_gas.sAM = subhalo.L.norm() / subhalo.Mvir;
 
-	if(subhalo.subhalo_type == Subhalo::SATELLITE && !subhalo.ascendants.empty()){
-		subhalo.hot_halo_gas.sAM = subhalo.L_infall.norm() / subhalo.Mvir_infall;
+	if(subhalo.subhalo_type == Subhalo::CENTRAL &&
+	               dark_matter_params.apply_fix_to_mass_swapping_events){
+	        subhalo.hot_halo_gas.sAM = subhalo.L_infall.norm() / subhalo.host_halo->Mvir;
+	}
+	else if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0 &&
+		       dark_matter_params.apply_fix_to_mass_swapping_events){
+	        subhalo.hot_halo_gas.sAM = subhalo.L_infall.norm() / subhalo.Mvir_infall;
+	}
+	else{
+	        subhalo.hot_halo_gas.sAM = subhalo.L.norm() / subhalo.Mvir;
 	}
 	
 
@@ -381,7 +389,8 @@ double GasCooling::cooling_rate(Subhalo &subhalo, Galaxy &galaxy, double z, doub
 	double fhot = mhot / subhalo.Mvir;
 
 	// If subhalo is a satellite, then use the virial velocity the subhalo had at infall.
-	if(subhalo.subhalo_type == Subhalo::SATELLITE && !subhalo.ascendants.empty()){
+	if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Vvir_infall != 0 &&
+	               dark_matter_params.apply_fix_to_mass_swapping_events){
 		vvir = subhalo.Vvir_infall;
 	}
 
@@ -407,16 +416,19 @@ double GasCooling::cooling_rate(Subhalo &subhalo, Galaxy &galaxy, double z, doub
 	double lgTvir = log10(Tvir); //in K.
 	double Rvir = 0;
 
-	if(subhalo.subhalo_type == Subhalo::CENTRAL){
-		Rvir = cosmology->comoving_to_physical_size(darkmatterhalos->halo_virial_radius(halo->Mvir, z), z);//physical Mpc
+	if(subhalo.subhalo_type == Subhalo::CENTRAL &&
+	               dark_matter_params.apply_fix_to_mass_swapping_events){
+	        //If subhalo is a central, then adopt host halo virial radius.
+	        Rvir = cosmology->comoving_to_physical_size(darkmatterhalos->halo_virial_radius(halo->Mvir, z), z);//physical Mpc
 	}
-	else if (subhalo.subhalo_type == Subhalo::CENTRAL && !subhalo.ascendants.empty()){
-		//If subhalo is a satellite, then adopt virial radius at infall.
-		Rvir = cosmology->comoving_to_physical_size(subhalo.rvir_infall, z);//physical Mpc
+	else if (subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.rvir_infall != 0 &&
+		       dark_matter_params.apply_fix_to_mass_swapping_events){
+	        //If subhalo is a satellite, then adopt virial radius at infall.
+	        Rvir = cosmology->comoving_to_physical_size(subhalo.rvir_infall, z);//physical Mpc
 	}
-	else {
-		//If subhalo is a satellite born as satellite, then adopt current virial radius.
-		Rvir = cosmology->comoving_to_physical_size(darkmatterhalos->halo_virial_radius(subhalo.Mvir, z), z);//physical Mpc
+	else{
+	        // When satellites are born as satellites (not infall properties) or when we don't to apply the fix to swapping events
+	        Rvir = cosmology->comoving_to_physical_size(darkmatterhalos->halo_virial_radius(subhalo.Mvir, z), z);//physical Mpc
 	}
 
 	/**

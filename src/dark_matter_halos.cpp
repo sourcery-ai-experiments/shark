@@ -144,20 +144,22 @@ double DarkMatterHalos::subhalo_dynamical_time (Subhalo &subhalo, double z){
 	double r = 0;
 	double v = 0;
  
+	r = halo_virial_radius(subhalo.Mvir, z);;
+	v = subhalo.Vvir;
+
 	if(subhalo.subhalo_type == Subhalo::CENTRAL &&
-			params.apply_fix_to_mass_swapping_events){
-		r = halo_virial_radius(subhalo.host_halo->Mvir, z);
+	               params.apply_fix_to_mass_swapping_events){
+	        r = halo_virial_radius(subhalo.host_halo->Mvir, z);
 		v = subhalo.Vvir;
 	}
-	else if(subhalo.subhalo_type == Subhalo::SATELLITE && !subhalo.ascendants.empty() &&
-			params.apply_fix_to_mass_swapping_events){
-		r = subhalo.rvir_infall;
+	else if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.rvir_infall != 0 &&
+	               params.apply_fix_to_mass_swapping_events){
+	        r = subhalo.rvir_infall;
 		v = subhalo.Vvir_infall;
 	}
 	else{
-		// When the satellite is born as satellite (no infall properties) or
-		// when we don't to apply the fix to mass swapping events
-		r = halo_virial_radius(subhalo.Mvir, z);;
+	        // When satellites are born as satellites (not infall properties) or when we don't to apply the fix to swapping events
+	        r = halo_virial_radius(subhalo.Mvir, z);;
 		v = subhalo.Vvir;
 	}
 
@@ -180,7 +182,7 @@ float DarkMatterHalos::halo_lambda (Subhalo &subhalo, float m, double z, double 
 	double H0 = cosmology->hubble_parameter(z);
 	double lambda = subhalo.L.norm() / m * 1.5234153 / std::pow(constants::G * m, 0.666) * std::pow(H0,0.33);
 
-	if(subhalo.subhalo_type == Subhalo::SATELLITE && !subhalo.ascendants.empty() &&
+	if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.L_infall.norm() != 0 &&
 			params.apply_fix_to_mass_swapping_events){
 		lambda = subhalo.L_infall.norm() / m * 1.5234153 / std::pow(constants::G * m, 0.666) * std::pow(H0,0.33);
 	}
@@ -240,13 +242,13 @@ double DarkMatterHalos::disk_size_theory (Subhalo &subhalo, double z){
 		//Calculation comes from assuming rdisk = 2/sqrt(2) *lambda *Rvir;
 		double Rvir = 0;
 		double lambda = 0;
-		
+
 		if(subhalo.subhalo_type == Subhalo::CENTRAL &&
 				params.apply_fix_to_mass_swapping_events){
-			Rvir = halo_virial_radius(subhalo.host_halo->Mvir, z);
+		        Rvir = halo_virial_radius(subhalo.host_halo->Mvir, z);
 			lambda = subhalo.host_halo->lambda;
 		}
-		else if(subhalo.subhalo_type == Subhalo::SATELLITE && !subhalo.ascendants.empty() &&
+		else if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.rvir_infall != 0 &&
 				params.apply_fix_to_mass_swapping_events){
 			Rvir = subhalo.rvir_infall;
 			lambda = subhalo.lambda_infall;
@@ -331,7 +333,7 @@ void DarkMatterHalos::cooling_gas_sAM(Subhalo &subhalo, double z){
 			subhalo.cold_halo_gas.sAM = constants::SQRT2 * std::pow(constants::G,0.66) *
 					subhalo.host_halo->lambda * std::pow(subhalo.host_halo->Mvir,0.66) / std::pow(H0,0.33);
 		}
-		else if(subhalo.subhalo_type == Subhalo::SATELLITE && !subhalo.ascendants.empty() &&
+		else if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.lambda_infall != 0 &&
 				params.apply_fix_to_mass_swapping_events){
 			// Define Mvir at infall for satellite
 			subhalo.cold_halo_gas.sAM = constants::SQRT2 * std::pow(constants::G,0.66) *
@@ -366,23 +368,15 @@ float DarkMatterHalos::enclosed_total_mass(const Subhalo &subhalo, double z, flo
 	double rvir = 0;
 	double concentration = 0;
 
+	galaxy = subhalo.type1_galaxy();
+
 	if(	params.apply_fix_to_mass_swapping_events){
-		if(subhalo.subhalo_type == Subhalo::CENTRAL){
-			galaxy = subhalo.central_galaxy();
-			// Define Mvir, Rvir from host halo
-			mvir = subhalo.host_halo->Mvir;
-			rvir = halo_virial_radius(subhalo.host_halo->Mvir, z);
-			concentration = subhalo.host_halo->concentration;
-		}
-		else{
-			galaxy = subhalo.type1_galaxy();
-			// Define current Mvir, Rvir for satellites
-			// since this is to compute the ram pressure stripping
-			// for type1 galaxies, we use the information at infall
-			mvir = subhalo.Mvir_infall;
-			rvir = halo_virial_radius(subhalo.Mvir_infall, cosmology->convert_redshift_to_age(subhalo.infall_t));
-			concentration = subhalo.concentration_infall;
-		}
+		// Define infall Mvir, Rvir for satellites
+		// since this is to compute the ram pressure stripping
+		// for type1 galaxies, we use the information at infall
+		mvir = subhalo.Mvir_infall;
+		rvir = halo_virial_radius(subhalo.Mvir_infall, subhalo.infall_t);
+		concentration = subhalo.concentration_infall;
 	}
 	else{
 		mvir = subhalo.Mvir;

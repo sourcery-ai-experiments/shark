@@ -108,7 +108,7 @@ public:
 	    cosmology(make_cosmology(cosmo_params)),
 	    dark_matter_halos(make_dark_matter_halos(dark_matter_halo_params, cosmology, simulation_params, exec_params)),
 	    agn_feedback_params(options),
-	    agn_feedback(make_agn_feedback(agn_feedback_params, cosmology, recycling_params, exec_params)),
+	    agn_feedback(make_agn_feedback(agn_feedback_params, cosmology, recycling_params, exec_params, dark_matter_halo_params)),
 	    writer(make_galaxy_writer(exec_params, cosmo_params, cosmology, dark_matter_halos, simulation_params, agn_feedback_params, agn_feedback)),
 	    simulation(simulation_params, cosmology),
 	    star_formation(star_formation_params, recycling_params, cosmology)
@@ -255,12 +255,12 @@ void SharkRunner::impl::create_per_thread_objects()
 	StellarFeedbackParameters stellar_feedback_params(options);
 	DarkMatterHaloParameters dark_matter_params(options);
 
-	auto agnfeedback = make_agn_feedback(agn_params, cosmology, recycling_params, exec_params);
+	auto agnfeedback = make_agn_feedback(agn_params, cosmology, recycling_params, exec_params, dark_matter_params);
 	auto environment = make_environment(environment_params, dark_matter_halos, cosmology, cosmo_params, simulation_params);
 	auto reionisation = make_reionisation(reio_params);
 	auto reincorporation = make_reincorporation(reinc_params, dark_matter_halos);
 	StellarFeedback stellar_feedback {stellar_feedback_params};
-	GasCooling gas_cooling {gas_cooling_params, star_formation_params, exec_params, reionisation, cosmology, agnfeedback, dark_matter_halos, reincorporation, environment};
+	GasCooling gas_cooling {gas_cooling_params, star_formation_params, exec_params, reionisation, cosmology, agnfeedback, dark_matter_params, dark_matter_halos, reincorporation, environment};
 
 	for(unsigned int i = 0; i != threads; i++) {
 		auto physical_model = std::make_shared<BasicPhysicalModel>(exec_params.ode_solver_precision, gas_cooling, stellar_feedback, star_formation, *agnfeedback,
