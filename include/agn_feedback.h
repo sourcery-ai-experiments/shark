@@ -35,6 +35,7 @@
 #include "options.h"
 #include "recycling.h"
 #include "subhalo.h"
+#include "dark_matter_halos.h"
 
 namespace shark {
 
@@ -100,7 +101,8 @@ public:
 class AGNFeedback {
 
 public:
-	AGNFeedback(const AGNFeedbackParameters &parameters, CosmologyPtr cosmology, RecyclingParameters recycle_params, ExecutionParameters exec_params);
+  AGNFeedback(const AGNFeedbackParameters &parameters, CosmologyPtr cosmology, RecyclingParameters recycle_params, ExecutionParameters exec_params,
+	      DarkMatterHaloParameters dark_matter_params);
 
 	/**
 	 * All input quantities should be in comoving units.
@@ -132,6 +134,7 @@ private:
 	CosmologyPtr cosmology;
 	RecyclingParameters recycle_params;
 	ExecutionParameters exec_params;
+        DarkMatterHaloParameters dark_matter_params;
 
 	std::uniform_real_distribution<double> distribution;
 

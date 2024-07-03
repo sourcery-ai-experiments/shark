@@ -103,6 +103,7 @@ public:
 			ReionisationPtr reionisation,
 			CosmologyPtr cosmology,
 			AGNFeedbackPtr agnfeedback,
+		        DarkMatterHaloParameters dark_matter_params,
 			DarkMatterHalosPtr darkmatterhalos,
 			ReincorporationPtr reincorporation,
 			EnvironmentPtr environment);
@@ -124,6 +125,7 @@ private:
 	ReionisationPtr reionisation;
 	CosmologyPtr cosmology;
 	AGNFeedbackPtr agnfeedback;
+        DarkMatterHaloParameters dark_matter_params;
 	DarkMatterHalosPtr darkmatterhalos;
 	ReincorporationPtr reincorporation;
 	EnvironmentPtr environment;

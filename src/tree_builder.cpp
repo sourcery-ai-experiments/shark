@@ -169,7 +169,7 @@ std::vector<MergerTreePtr> TreeBuilder::build_trees(std::vector<HaloPtr> &halos,
 		define_properties_central_subhalos(trees, sim_params, dark_matter_params, darkmatterhalos);
 	}*/
 
-	// Define accretion rate from DM in case we want this.
+ 	// Define accretion rate from DM in case we want this.
 	LOG(info) << "Defining accretion rate using cosmology";
 	define_accretion_rate_from_dm(trees, sim_params, gas_cooling_params, *cosmology, AllBaryons);
 
@@ -246,6 +246,7 @@ SubhaloPtr TreeBuilder::define_central_subhalo(HaloPtr &halo, SubhaloPtr &subhal
 	//remove subhalo from satellite list.
 	remove_satellite(halo, subhalo);
 
+	
 	//define subhalo as central.
 	subhalo->subhalo_type = Subhalo::CENTRAL;
 
@@ -253,7 +254,7 @@ SubhaloPtr TreeBuilder::define_central_subhalo(HaloPtr &halo, SubhaloPtr &subhal
 }
 
 void TreeBuilder::define_central_subhalos(const std::vector<MergerTreePtr> &trees, SimulationParameters &sim_params, DarkMatterHaloParameters &dark_matter_params,
-		const DarkMatterHalosPtr &darkmatterhalos){
+					  const DarkMatterHalosPtr &darkmatterhalos){
 
 	//This function loops over merger trees and halos to define central galaxies in a self-consistent way. The loop starts at z=0.
 
@@ -273,7 +274,10 @@ void TreeBuilder::define_central_subhalos(const std::vector<MergerTreePtr> &tree
 
 				// save value of lambda to make sure that all main progenitors of this subhalo have the same lambda value. This is done for consistency 
 				// throughout time.
-				auto lambda = subhalo->lambda;
+				// NOTE: these are central subhalos, so use the host halo information
+				auto z = sim_params.redshifts[subhalo->snapshot];
+				auto npart = subhalo->Mvir/sim_params.particle_mass;
+				auto lambda = darkmatterhalos->halo_lambda(*subhalo, halo->Mvir, z, npart);;
 
 				// Now walk backwards through the main progenitor branch until subhalo has no more progenitors. This is done only in the case the ascendant
 				// halo does not have a central already.
@@ -312,6 +316,7 @@ void TreeBuilder::define_central_subhalos(const std::vector<MergerTreePtr> &tree
 					// Redefine lambda of main progenitor to have the same one as its descendant, only if this halo is not reliable.
 					if (!dark_matter_params.use_converged_lambda_catalog || (dark_matter_params.use_converged_lambda_catalog && main_prog->Mvir/sim_params.particle_mass < dark_matter_params.min_part_convergence)) {
 						main_prog->lambda = lambda;
+
 					}
 					subhalo = define_central_subhalo(ascendant_halo, main_prog, sim_params, dark_matter_params, darkmatterhalos);
 
@@ -325,7 +330,9 @@ void TreeBuilder::define_central_subhalos(const std::vector<MergerTreePtr> &tree
 					ascendants = subhalo->ascendants;
 
 				}
+
 			}
+
 		}
 	});
 
@@ -609,9 +616,11 @@ void TreeBuilder::define_properties_satellite_subhalos(const std::vector<MergerT
 
 							subhalo->lambda = darkmatterhalos->halo_lambda(*subhalo, mvir, z, npart);
 							subhalo->Vvir = darkmatterhalos->halo_virial_velocity(mvir, z);
+
+
 						}
 					}
-					
+
 				}
 			}
 
