@@ -375,7 +375,7 @@ float DarkMatterHalos::enclosed_total_mass(const Subhalo &subhalo, double z, flo
 		        // Define Mvir, Rvir from host halo
 		        mvir = subhalo.host_halo->Mvir;
 			rvir = halo_virial_radius(subhalo.host_halo->Mvir, z);
-			concentration = subhalo.host_halo->concentration_infall;
+			concentration = subhalo.host_halo->concentration;
 		}
 	        else if(subhalo.subhalo_type == Subhalo::SATELLITE && subhalo.Mvir_infall != 0){
 		        galaxy = subhalo.type1_galaxy();
@@ -393,7 +393,7 @@ float DarkMatterHalos::enclosed_total_mass(const Subhalo &subhalo, double z, flo
 		        // for type1 galaxies, we use the information at infall
 		        mvir = subhalo.Mvir;
 			rvir = halo_virial_radius(subhalo.Mvir, z);
-			concentration = subhalo.concentration_infall;
+			concentration = subhalo.concentration;
 		}
 	}
 	else{
